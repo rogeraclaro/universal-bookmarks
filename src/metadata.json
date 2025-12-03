@@ -1,0 +1,5 @@
+{
+  "name": "AI Bookmark Manager",
+  "description": "A brutalist-style manager for organizing AI-related Twitter bookmarks using Gemini for auto-categorization.",
+  "requestFramePermissions": []
+}
