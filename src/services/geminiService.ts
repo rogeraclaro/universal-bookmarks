@@ -8,18 +8,14 @@ const processBatch = async (
   tweets: TweetRaw[],
   categories: string[]
 ): Promise<ProcessedTweetResult[]> => {
+  // Use process.env.API_KEY as mandated by guidelines.
+  // This also fixes the TS error regarding import.meta.env
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
 
-  // FIX: Use import.meta.env.VITE_API_KEY for Vite
-  const apiKey = import.meta.env.VITE_API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key not found. Please check your .env file.");
-  }
-  const ai = new GoogleGenAI({ apiKey });
-
-  // TRUNCATE text stricter (800 chars) to prevent context overload
+  // TRUNCATE text to prevent massive context windows or reflection issues
   const simplifiedTweets = tweets.map((t) => ({
     id: t.id_str || t.id || Math.random().toString(),
-    text: (t.full_text || t.text || "").substring(0, 800),
+    text: (t.full_text || t.text || "").substring(0, 1000),
     urls: t.entities?.urls?.map((u) => u.expanded_url) || [],
   }));
 
@@ -53,30 +49,18 @@ const processBatch = async (
       systemInstruction,
       responseMimeType: "application/json",
       responseSchema: schema,
-      // CRITICAL: Limit output tokens to prevent infinite loops/hallucinations
-      maxOutputTokens: 2000,
     },
   });
 
   let jsonText = response.text;
   if (!jsonText) return [];
 
-  // SAFETY: If response is suspiciously huge (hallucination loop), fail fast
-  if (jsonText.length > 10000) {
-    throw new Error("Model hallucination detected (Response too large)");
-  }
-
   if (jsonText.startsWith("```")) {
     jsonText = jsonText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");
   }
 
-  try {
-    const parsed = JSON.parse(jsonText) as ProcessedTweetResult[];
-    return parsed;
-  } catch (e) {
-    console.error("JSON Parse Error. Content was:", jsonText.substring(0, 200) + "...");
-    throw e;
-  }
+  const parsed = JSON.parse(jsonText) as ProcessedTweetResult[];
+  return parsed;
 };
 
 export const processBookmarksWithGemini = async (

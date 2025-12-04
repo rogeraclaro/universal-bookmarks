@@ -38,9 +38,13 @@ export const strings = {
     editTitle: "Editar Bookmark",
     deleteTitle: "Esborrar Bookmark",
     manageCategories: "Gestionar Categories",
+    successTitle: "Importació Finalitzada",
+    attentionTitle: "Atenció",
+    errorTitle: "Error",
     labelTitle: "Títol",
     labelCategory: "Categoria",
-    labelDescription: "Descripció",
+    labelDescription: "Text del Tuit",
+    labelAuthor: "Autor (@usuari)",
     labelOriginalLink: "Enllaç Original (Twitter)",
     labelExternalLinks: "Enllaços Externs (separats per coma)",
     placeholderExternalLinks: "https://example.com, https://github.com...",
@@ -49,7 +53,8 @@ export const strings = {
     btnSave: "Desar Canvis",
     btnAdd: "Afegir",
     btnDelete: "Esborrar Definitivament",
-    btnCloseConsole: "Tancar Consola"
+    btnCloseConsole: "Tancar Consola",
+    btnOk: "D'acord"
   },
   alerts: {
     confirmDelete: "Estàs segur que vols esborrar aquest bookmark? No es tornarà a importar en el futur.",
@@ -77,7 +82,8 @@ export const strings = {
     ],
     uncategorized: "Altres",
     untitled: "Sense títol",
-    noDescription: "Sense descripció"
+    noDescription: "Sense text",
+    unknownAuthor: "Unknown"
   },
   prompts: {
     systemInstruction: (categoriesString: string) => `
@@ -90,9 +96,11 @@ export const strings = {
     3. Si ÉS relacionat amb IA:
        - Marca 'isAI' com a true.
        - Genera un 'title' curt i descriptiu en CATALÀ.
-       - Genera una 'description' (resum) d'1 o 2 frases en CATALÀ explicant el valor del recurs o notícia.
        - Assigna una 'category' de la següent llista: [${categoriesString}]. Si no encaixa bé, fes servir 'Altres'.
        - Extreu enllaços externs rellevants ('externalLinks') que apareguin al text o metadades, excloent enllaços a twitter.com o x.com.
+    
+    NOTA: NO generis un resum ni descripció. Farem servir el text original.
+    IMPORTANT: El títol NO ha de contenir el teu procés de pensament, ni text entre parèntesis explicant per què has triat el títol. Dona només el títol final.
   `
   }
 };

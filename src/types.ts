@@ -5,6 +5,10 @@ export interface TweetRaw {
   id_str?: string;
   id?: string;
   created_at?: string;
+  user?: {
+    name?: string;
+    screen_name?: string;
+  };
   entities?: {
     urls?: Array<{ expanded_url: string }>;
   };
@@ -14,7 +18,8 @@ export interface TweetRaw {
 export interface Bookmark {
   id: string;
   title: string;
-  description: string;
+  description: string; // Now stores the raw tweet text
+  author: string;      // New field
   originalLink: string;
   externalLinks: string[];
   category: string;
@@ -27,7 +32,7 @@ export type Category = string;
 export interface ProcessedTweetResult {
   isAI: boolean;
   title: string;
-  description: string;
+  // description removed as we use raw text
   category: string;
   externalLinks: string[];
   originalId: string;

@@ -1,5 +1,7 @@
+
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Upload, X, ExternalLink, Edit2, Trash2, Plus, Settings, Github, Twitter, Link as LinkIcon, Download, Play, FileDown, Square, RefreshCcw, Hash, Terminal, Menu } from 'lucide-react';
+import { Upload, X, ExternalLink, Edit2, Trash2, Plus, Settings, Github, Twitter, Link as LinkIcon, Download, Play, FileDown, Square, RefreshCcw, Hash, Terminal, Menu, Calendar, User } from 'lucide-react';
 import { Bookmark, Category, TweetRaw, LogEntry } from './types';
 import { processBookmarksWithGemini } from './services/geminiService';
 import { storage } from './services/storage';
@@ -16,9 +18,12 @@ const BookmarkCard: React.FC<{
   // Extract original ID for blacklist purposes
   const originalId = bookmark.originalLink.split('/').pop() || "";
 
+  // Format Date: YYYY-MM-DD
+  const dateStr = new Date(bookmark.createdAt).toISOString().split('T')[0];
+
   return (
     <div className="bg-white border-2 border-black p-5 h-full flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200">
-      <div className="flex justify-between items-start mb-3">
+      <div className="flex justify-between items-start mb-2">
         <Badge color="bg-cyan-300">{bookmark.category}</Badge>
         <div className="flex gap-2">
           <button
@@ -38,8 +43,26 @@ const BookmarkCard: React.FC<{
         </div>
       </div>
 
+      {/* Meta Info: Date & Author */}
+      <div className="flex flex-wrap gap-3 mb-3 text-xs font-mono text-gray-500 border-b border-gray-200 pb-2">
+        <div className="flex items-center gap-1">
+          <Calendar size={12} />
+          <span>{dateStr}</span>
+        </div>
+        {bookmark.author && bookmark.author !== "Unknown" && (
+          <div className="flex items-center gap-1 font-bold text-black">
+            <User size={12} />
+            <span>{bookmark.author.startsWith('@') ? bookmark.author : `@${bookmark.author}`}</span>
+          </div>
+        )}
+      </div>
+
       <h3 className="font-bold text-xl leading-tight mb-3">{bookmark.title}</h3>
-      <p className="text-gray-700 font-mono mb-6 flex-grow leading-relaxed text-sm">{bookmark.description}</p>
+
+      {/* Raw Text Description */}
+      <p className="text-gray-700 font-mono mb-6 flex-grow leading-relaxed text-sm whitespace-pre-wrap break-words">
+        {bookmark.description}
+      </p>
 
       <div className="mt-auto pt-4 border-t-2 border-black/10 flex flex-col gap-3">
         <a
@@ -96,6 +119,9 @@ export default function App() {
     isOpen: false, id: null, originalId: null
   });
 
+  // Result/Alert Modal State
+  const [resultModal, setResultModal] = useState<{ title: string, message: string } | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -143,6 +169,12 @@ export default function App() {
       message,
       type
     }]);
+  };
+
+  const closeResultModal = () => {
+    setResultModal(null);
+    // Clear logs when closing the final result modal to clean up the UI
+    setLogs([]);
   };
 
   const handleExport = () => {
@@ -201,7 +233,10 @@ export default function App() {
 
   const processTweetsData = async (tweets: TweetRaw[], signal: AbortSignal) => {
     if (tweets.length === 0) {
-      alert(strings.alerts.noValidTweets);
+      setResultModal({
+        title: strings.modal.attentionTitle,
+        message: strings.alerts.noValidTweets
+      });
       setIsLoading(false);
       return;
     }
@@ -226,8 +261,12 @@ export default function App() {
     const skippedCount = tweets.length - uniqueTweets.length;
 
     if (uniqueTweets.length === 0) {
-      addLog(strings.alerts.importResult.replace("{0}", "0").replace("{1}", String(skippedCount)).replace("{2}", "0"), 'warning');
-      alert(strings.alerts.importResult.replace("{0}", "0").replace("{1}", String(skippedCount)).replace("{2}", "0"));
+      const msg = strings.alerts.importResult.replace("{0}", "0").replace("{1}", String(skippedCount)).replace("{2}", "0");
+      addLog(msg, 'warning');
+      setResultModal({
+        title: strings.modal.successTitle,
+        message: msg
+      });
       setIsLoading(false);
       return;
     }
@@ -254,17 +293,40 @@ export default function App() {
       const newItems: Bookmark[] = aiResults.map(p => {
         // Find original tweet to get text fallback
         const originalTweet = uniqueTweets.find(t => (t.id_str || t.id) === p.originalId);
+
+        // Raw Text logic with truncation
         const originalText = originalTweet?.full_text || originalTweet?.text || "";
-        const fallbackDesc = originalText.substring(0, 140) + (originalText.length > 140 ? " [...]" : "");
+        const TRUNC_LIMIT = 280;
+        const description = originalText.length > TRUNC_LIMIT
+          ? originalText.substring(0, TRUNC_LIMIT) + " [...]"
+          : originalText;
+
+        // Extract Author Logic
+        let author = strings.defaults.unknownAuthor;
+        if (originalTweet?.user?.screen_name) {
+          author = originalTweet.user.screen_name;
+        } else if (originalTweet?.user?.name) {
+          author = originalTweet.user.name;
+        }
+
+        // Extract Date
+        let createdAt = Date.now();
+        if (originalTweet?.created_at) {
+          const parsedDate = new Date(originalTweet.created_at);
+          if (!isNaN(parsedDate.getTime())) {
+            createdAt = parsedDate.getTime();
+          }
+        }
 
         return {
           id: p.originalId + Math.random().toString(36).substr(2, 9),
           title: p.title || strings.defaults.untitled,
-          description: p.description || fallbackDesc,
+          description: description || strings.defaults.noDescription,
+          author: author,
           category: categories.includes(p.category) ? p.category : strings.defaults.uncategorized,
           externalLinks: p.externalLinks || [],
           originalLink: `https://twitter.com/i/web/status/${p.originalId}`,
-          createdAt: Date.now()
+          createdAt: createdAt
         };
       });
 
@@ -275,11 +337,14 @@ export default function App() {
       addLog(strings.logs.finished, 'success');
       setIsLoading(false);
 
-      alert(strings.alerts.importResult
-        .replace("{0}", String(newItems.length))
-        .replace("{1}", String(skippedCount))
-        .replace("{2}", String(newRejectedTweets.length))
-      );
+      setResultModal({
+        title: strings.modal.successTitle,
+        message: strings.alerts.importResult
+          .replace("{0}", String(newItems.length))
+          .replace("{1}", String(skippedCount))
+          .replace("{2}", String(newRejectedTweets.length))
+      });
+
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log("Processing aborted by user");
@@ -337,8 +402,12 @@ export default function App() {
           setBookmarks(newBookmarks);
           storage.saveBookmarks(newBookmarks);
 
-          addLog(strings.alerts.backupMerge.replace("{0}", String(addedCount)).replace("{1}", String(skippedCount)), 'success');
-          alert(strings.alerts.backupMerge.replace("{0}", String(addedCount)).replace("{1}", String(skippedCount)));
+          const msg = strings.alerts.backupMerge.replace("{0}", String(addedCount)).replace("{1}", String(skippedCount));
+          addLog(msg, 'success');
+          setResultModal({
+            title: strings.modal.successTitle,
+            message: msg
+          });
           setIsLoading(false);
           return;
         }
@@ -358,7 +427,10 @@ export default function App() {
 
       } catch (error) {
         console.error("Error parsing file:", error);
-        alert(strings.alerts.importError);
+        setResultModal({
+          title: strings.modal.errorTitle,
+          message: strings.alerts.importError
+        });
         setIsLoading(false);
       } finally {
         e.target.value = '';
@@ -392,6 +464,7 @@ export default function App() {
       id: Math.random().toString(36).substr(2, 9),
       title: "",
       description: "",
+      author: "",
       category: categories[0] || strings.defaults.uncategorized,
       externalLinks: [],
       originalLink: "",
@@ -435,6 +508,7 @@ export default function App() {
     }
   };
 
+  // Group AND Sort by Date (Newest to Oldest)
   const groupedBookmarks = useMemo(() => {
     const groups: Record<string, Bookmark[]> = {};
     categories.forEach(c => groups[c] = []);
@@ -449,6 +523,12 @@ export default function App() {
         groups[uncategorized].push(b);
       }
     });
+
+    // Sort each group by createdAt DESC
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => b.createdAt - a.createdAt);
+    });
+
     return groups;
   }, [bookmarks, categories]);
 
@@ -630,7 +710,7 @@ export default function App() {
 
       {/* Log Console Modal (Only visible when loading or explicitly open) */}
       <Modal
-        isOpen={isLoading || (logs.length > 0 && !isLoading && logs[logs.length - 1]?.type !== 'success')}
+        isOpen={isLoading || (logs.length > 0 && !isLoading && !resultModal)}
         onClose={() => { if (!isLoading) setLogs([]); }}
         title={strings.logs.title}
       >
@@ -671,6 +751,20 @@ export default function App() {
         </div>
       </Modal>
 
+      {/* Result Modal (Replaces Alerts) */}
+      <Modal
+        isOpen={!!resultModal}
+        onClose={closeResultModal}
+        title={resultModal?.title || ""}
+      >
+        <div className="mb-6">
+          <p className="font-mono text-base">{resultModal?.message}</p>
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={closeResultModal}>{strings.modal.btnOk}</Button>
+        </div>
+      </Modal>
+
       {/* Edit/Create Modal */}
       <Modal
         isOpen={isEditModalOpen}
@@ -700,9 +794,18 @@ export default function App() {
             <div>
               <Label>{strings.modal.labelDescription}</Label>
               <TextArea
-                rows={4}
+                rows={6}
                 value={editingBookmark.description}
                 onChange={e => setEditingBookmark({ ...editingBookmark, description: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>{strings.modal.labelAuthor}</Label>
+              <Input
+                value={editingBookmark.author || ""}
+                onChange={e => setEditingBookmark({ ...editingBookmark, author: e.target.value })}
+                placeholder="@username"
               />
             </div>
 
