@@ -9,14 +9,7 @@ const processBatch = async (
   categories: string[]
 ): Promise<ProcessedTweetResult[]> => {
 
-  // FIX: En local amb Vite hem de fer servir import.meta.env
-  const apiKey = import.meta.env.VITE_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("API Key not found. Make sure VITE_API_KEY is defined in your .env file.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
 
   // TRUNCATE text to prevent massive context windows or reflection issues
   const simplifiedTweets = tweets.map((t) => ({

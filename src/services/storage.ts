@@ -7,8 +7,8 @@ const KEYS = {
   DELETED_IDS: 'ai-bookmarks-deleted-ids'
 };
 
-const API_URL = process.env.VITE_STORAGE_API_URL;
-const API_SECRET = process.env.VITE_STORAGE_SECRET;
+const API_URL = import.meta.env.VITE_STORAGE_API_URL;
+const API_SECRET = import.meta.env.VITE_STORAGE_SECRET;
 
 // Helper function to handle API requests
 async function apiRequest<T>(endpoint: string, method: 'GET' | 'POST', data?: any): Promise<T | null> {
