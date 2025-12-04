@@ -8,7 +8,8 @@ const processBatch = async (
   tweets: TweetRaw[],
   categories: string[]
 ): Promise<ProcessedTweetResult[]> => {
-
+  // Use process.env.API_KEY as mandated by guidelines.
+  // This also fixes the TS error regarding import.meta.env
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
 
   // TRUNCATE text to prevent massive context windows or reflection issues
