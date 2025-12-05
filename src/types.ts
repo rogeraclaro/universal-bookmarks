@@ -5,6 +5,7 @@ export interface TweetRaw {
   id_str?: string;
   id?: string;
   created_at?: string;
+  author?: string;    // Format: "Name@username·date"
   user?: {
     name?: string;
     screen_name?: string;

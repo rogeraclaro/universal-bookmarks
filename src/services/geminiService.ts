@@ -5,6 +5,35 @@ import { strings } from "../translations";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Clean titles that contain contamination from other JSON fields
+const cleanContaminatedTitle = (title: string): string => {
+  if (!title) return title;
+
+  // Remove contamination patterns like: ","category":"... or ','category':'...
+  // These appear when Gemini's response gets truncated mid-JSON
+  const contaminationPatterns = [
+    /[",]['"]category['"]:/i,
+    /[",]['"]isAI['"]:/i,
+    /[",]['"]externalLinks['"]:/i,
+    /[",]['"]originalId['"]:/i,
+  ];
+
+  let cleaned = title;
+  for (const pattern of contaminationPatterns) {
+    const match = cleaned.match(pattern);
+    if (match && match.index !== undefined) {
+      // Cut the title just before the contamination
+      cleaned = cleaned.substring(0, match.index).trim();
+      break;
+    }
+  }
+
+  // Remove trailing punctuation artifacts
+  cleaned = cleaned.replace(/[.,;:]+$/, '');
+
+  return cleaned;
+};
+
 // Sanitize text to prevent JSON parsing errors and reduce length
 const sanitizeText = (text: string): string => {
   return text
@@ -109,7 +138,7 @@ const processBatch = async (
       ...item,
       title: item.title && item.title.length > 100
         ? item.title.substring(0, 97) + '...'
-        : item.title
+        : cleanContaminatedTitle(item.title)
     }));
   } catch (parseError: any) {
     console.error('JSON Parse Error:', parseError);

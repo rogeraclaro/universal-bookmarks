@@ -111,6 +111,12 @@ export default function App() {
   const [newBookmarkMode, setNewBookmarkMode] = useState(false);
   const [rejectedTweets, setRejectedTweets] = useState<TweetRaw[]>([]);
 
+  // Review Modal States
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedTweetsForReview, setSelectedTweetsForReview] = useState<Set<string>>(new Set());
+  const [tweetsToEdit, setTweetsToEdit] = useState<TweetRaw[]>([]);
+  const [currentEditIndex, setCurrentEditIndex] = useState(0);
+
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -303,7 +309,11 @@ export default function App() {
 
         // Extract Author Logic
         let author = strings.defaults.unknownAuthor;
-        if (originalTweet?.user?.screen_name) {
+        if (originalTweet?.author) {
+          // Format: "Name@username·date" - extract part before "·"
+          const beforeDot = originalTweet.author.split('·')[0];
+          author = beforeDot.trim();
+        } else if (originalTweet?.user?.screen_name) {
           author = originalTweet.user.screen_name;
         } else if (originalTweet?.user?.name) {
           author = originalTweet.user.name;
@@ -337,13 +347,18 @@ export default function App() {
       addLog(strings.logs.finished, 'success');
       setIsLoading(false);
 
-      setResultModal({
-        title: strings.modal.successTitle,
-        message: strings.alerts.importResult
-          .replace("{0}", String(newItems.length))
-          .replace("{1}", String(skippedCount))
-          .replace("{2}", String(newRejectedTweets.length))
-      });
+      // If there are rejected tweets, open review modal instead of showing result
+      if (newRejectedTweets.length > 0) {
+        setIsReviewModalOpen(true);
+      } else {
+        setResultModal({
+          title: strings.modal.successTitle,
+          message: strings.alerts.importResult
+            .replace("{0}", String(newItems.length))
+            .replace("{1}", String(skippedCount))
+            .replace("{2}", String(newRejectedTweets.length))
+        });
+      }
 
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -487,6 +502,111 @@ export default function App() {
     });
     setIsEditModalOpen(false);
     setEditingBookmark(null);
+  };
+
+  // Review Modal Handlers
+  const toggleTweetSelection = (tweetId: string) => {
+    setSelectedTweetsForReview(prev => {
+      const next = new Set(prev);
+      if (next.has(tweetId)) {
+        next.delete(tweetId);
+      } else {
+        next.add(tweetId);
+      }
+      return next;
+    });
+  };
+
+  const handleConfirmReview = () => {
+    const selected = rejectedTweets.filter(t => {
+      const id = t.id_str || t.id;
+      return id && selectedTweetsForReview.has(String(id));
+    });
+
+    if (selected.length === 0) {
+      // No tweets selected, just close and show result modal
+      setIsReviewModalOpen(false);
+      setSelectedTweetsForReview(new Set());
+      const addedCount = bookmarks.length;
+      setResultModal({
+        title: strings.modal.successTitle,
+        message: strings.alerts.importResult
+          .replace("{0}", String(addedCount))
+          .replace("{1}", "0")
+          .replace("{2}", String(rejectedTweets.length))
+      });
+      return;
+    }
+
+    // Start sequential editing flow
+    setTweetsToEdit(selected);
+    setCurrentEditIndex(0);
+    setIsReviewModalOpen(false);
+    openEditModalForReviewTweet(selected[0]);
+  };
+
+  const openEditModalForReviewTweet = (tweet: TweetRaw) => {
+    const tweetText = tweet.full_text || tweet.text || "";
+    let author = strings.defaults.unknownAuthor;
+    if (tweet.author) {
+      const beforeDot = tweet.author.split('·')[0];
+      author = beforeDot.trim();
+    } else if (tweet.user?.screen_name) {
+      author = tweet.user.screen_name;
+    } else if (tweet.user?.name) {
+      author = tweet.user.name;
+    }
+
+    setEditingBookmark({
+      id: Math.random().toString(36).substr(2, 9),
+      title: tweetText.length > 80 ? tweetText.substring(0, 77) + "..." : tweetText,
+      description: tweetText,
+      author: author,
+      category: categories[0] || strings.defaults.uncategorized,
+      externalLinks: tweet.entities?.urls?.map((u: any) => u.expanded_url).filter((url: string) =>
+        !url.includes('twitter.com') && !url.includes('x.com')
+      ) || [],
+      originalLink: `https://twitter.com/i/web/status/${tweet.id_str || tweet.id}`,
+      createdAt: Date.now()
+    });
+    setNewBookmarkMode(true);
+    setIsEditModalOpen(true);
+  };
+
+  const handleReviewTweetSave = () => {
+    if (!editingBookmark) return;
+
+    // Save the current tweet
+    setBookmarks(prev => [editingBookmark, ...prev]);
+
+    // Remove from rejectedTweets
+    const currentTweetId = tweetsToEdit[currentEditIndex].id_str || tweetsToEdit[currentEditIndex].id;
+    setRejectedTweets(prev => prev.filter(t => {
+      const id = t.id_str || t.id;
+      return String(id) !== String(currentTweetId);
+    }));
+
+    // Check if there are more tweets to edit
+    if (currentEditIndex < tweetsToEdit.length - 1) {
+      setCurrentEditIndex(prev => prev + 1);
+      openEditModalForReviewTweet(tweetsToEdit[currentEditIndex + 1]);
+    } else {
+      // Finished editing all selected tweets
+      setIsEditModalOpen(false);
+      setEditingBookmark(null);
+      setTweetsToEdit([]);
+      setCurrentEditIndex(0);
+      setSelectedTweetsForReview(new Set());
+
+      // Show final result modal
+      setResultModal({
+        title: strings.modal.successTitle,
+        message: strings.alerts.importResult
+          .replace("{0}", String(bookmarks.length + tweetsToEdit.length))
+          .replace("{1}", "0")
+          .replace("{2}", String(rejectedTweets.length - tweetsToEdit.length))
+      });
+    }
   };
 
   const handleCategoryAdd = () => {
@@ -828,7 +948,9 @@ export default function App() {
 
             <div className="pt-4 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsEditModalOpen(false)}>{strings.modal.btnCancel}</Button>
-              <Button onClick={saveBookmark}>{strings.modal.btnSave}</Button>
+              <Button onClick={tweetsToEdit.length > 0 ? handleReviewTweetSave : saveBookmark}>
+                {tweetsToEdit.length > 0 ? `${strings.modal.btnSave} (${currentEditIndex + 1}/${tweetsToEdit.length})` : strings.modal.btnSave}
+              </Button>
             </div>
           </div>
         )}
@@ -881,6 +1003,99 @@ export default function App() {
           </Button>
           <Button variant="danger" onClick={confirmDelete} icon={<Trash2 size={18} />}>
             {strings.modal.btnDelete}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Review Rejected Tweets Modal */}
+      <Modal
+        isOpen={isReviewModalOpen}
+        onClose={() => {
+          setIsReviewModalOpen(false);
+          setSelectedTweetsForReview(new Set());
+          // Show result modal when closing without reviewing
+          setResultModal({
+            title: strings.modal.successTitle,
+            message: strings.alerts.importResult
+              .replace("{0}", String(bookmarks.length))
+              .replace("{1}", "0")
+              .replace("{2}", String(rejectedTweets.length))
+          });
+        }}
+        title="Revisar Tweets Descartats"
+      >
+        <div className="mb-4">
+          <p className="font-mono text-sm mb-4">
+            Gemini ha descartat {rejectedTweets.length} tweet{rejectedTweets.length !== 1 ? 's' : ''} perquè no estan relacionats amb IA o han fallat el processament.
+            Selecciona els que vulguis afegir igualment:
+          </p>
+        </div>
+
+        <div className="max-h-96 overflow-y-auto border-2 border-black p-4 mb-4">
+          {rejectedTweets.map(tweet => {
+            const tweetId = tweet.id_str || tweet.id || "";
+            const tweetText = tweet.full_text || tweet.text || "";
+            const isSelected = selectedTweetsForReview.has(String(tweetId));
+
+            return (
+              <div key={tweetId} className="mb-3 p-3 border-2 border-gray-300 hover:border-black transition-colors">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleTweetSelection(String(tweetId))}
+                    className="mt-1 w-5 h-5 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <p className="font-mono text-sm whitespace-pre-wrap break-words">
+                      {tweetText.substring(0, 200)}
+                      {tweetText.length > 200 ? '...' : ''}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2">
+                      {tweet.author && (
+                        <p className="text-xs text-gray-500">
+                          {tweet.author.split('·')[0]}
+                        </p>
+                      )}
+                      <a
+                        href={`https://twitter.com/i/web/status/${tweetId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <Twitter size={12} /> Veure original
+                      </a>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setIsReviewModalOpen(false);
+              setSelectedTweetsForReview(new Set());
+              setResultModal({
+                title: strings.modal.successTitle,
+                message: strings.alerts.importResult
+                  .replace("{0}", String(bookmarks.length))
+                  .replace("{1}", "0")
+                  .replace("{2}", String(rejectedTweets.length))
+              });
+            }}
+          >
+            Ometre Tots
+          </Button>
+          <Button
+            onClick={handleConfirmReview}
+            disabled={selectedTweetsForReview.size === 0}
+          >
+            Revisar Seleccionats ({selectedTweetsForReview.size})
           </Button>
         </div>
       </Modal>
