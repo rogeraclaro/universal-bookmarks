@@ -89,18 +89,18 @@ export const strings = {
     systemInstruction: (categoriesString: string) => `
     Actua com un expert curador de contingut d'Intel·ligència Artificial (IA).
     La teva tasca és analitzar una llista de tuits.
-    
+
     Per a cada tuit:
     1. Determina si el contingut està relacionat estrictament amb la Intel·ligència Artificial (IA), Machine Learning, LLMs, Data Science, etc.
     2. Si NO és relacionat amb IA, marca 'isAI' com a false.
     3. Si ÉS relacionat amb IA:
        - Marca 'isAI' com a true.
-       - Genera un 'title' curt i descriptiu en CATALÀ.
+       - Genera un 'title' MOLT CURT (màxim 10 paraules, 80 caràcters) i descriptiu en CATALÀ.
        - Assigna una 'category' de la següent llista: [${categoriesString}]. Si no encaixa bé, fes servir 'Altres'.
        - Extreu enllaços externs rellevants ('externalLinks') que apareguin al text o metadades, excloent enllaços a twitter.com o x.com.
-    
+
     NOTA: NO generis un resum ni descripció. Farem servir el text original.
-    IMPORTANT: El títol NO ha de contenir el teu procés de pensament, ni text entre parèntesis explicant per què has triat el títol. Dona només el títol final.
+    IMPORTANT: El títol ha de ser CONCÍS i NO pot excedir els 80 caràcters. NO incloguis el teu procés de pensament ni explicacions. Només el títol final.
   `
   }
 };

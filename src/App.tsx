@@ -1,11 +1,11 @@
 
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Upload, X, ExternalLink, Edit2, Trash2, Plus, Settings, Github, Twitter, Link as LinkIcon, Download, Play, FileDown, Square, RefreshCcw, Hash, Terminal, Menu, Calendar, User } from 'lucide-react';
-import { Bookmark, Category, TweetRaw, LogEntry } from './types';
+import { Upload, X, Edit2, Trash2, Plus, Settings, Twitter, Link as LinkIcon, Download, FileDown, Hash, Menu, Calendar, User } from 'lucide-react';
+import type { Bookmark, Category, TweetRaw, LogEntry } from './types';
 import { processBookmarksWithGemini } from './services/geminiService';
 import { storage } from './services/storage';
-import { Button, Card, Input, Label, TextArea, Select, Badge, Modal } from './components/UI';
+import { Button, Input, Label, TextArea, Select, Badge, Modal } from './components/UI';
 import { strings } from './translations';
 
 // --- Helper Components ---

@@ -1,4 +1,4 @@
-import { Bookmark, Category } from '../types';
+import type { Bookmark, Category } from '../types';
 import { strings } from '../translations';
 
 const KEYS = {
