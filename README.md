@@ -913,9 +913,9 @@ const API_SECRET = import.meta.env.VITE_STORAGE_SECRET
 **Format Request:**
 ```http
 POST /bookmarks HTTP/1.1
-Host: 62.169.25.188:3002
+Host: xxx.xxx.xxx.xxx:xxxx
 Content-Type: application/json
-x-api-secret: [REDACTED-API-SECRET]
+x-api-secret: XXXXXXXXXXXXXX
 
 {
   "data": [
@@ -970,7 +970,7 @@ async function apiRequest<T>(endpoint, method, data?) {
 **Mètode:** Custom secret header
 
 ```http
-x-api-secret: [REDACTED-API-SECRET]
+x-api-secret: xxxx
 ```
 
 **Validació (server.js):**
@@ -1042,7 +1042,7 @@ const path = require('path')
 const app = express()
 const PORT = 3002
 const DB_FILE = path.join(__dirname, 'db.json')
-const API_SECRET = '[REDACTED-API-SECRET]'
+const API_SECRET = 'xxxx'
 
 // Middleware
 app.use(cors())  // Permet requests des de qualsevol origen
@@ -1286,9 +1286,9 @@ curl -H "x-api-secret: [REDACTED-API-SECRET]" \
 # POST bookmark
 curl -X POST \
      -H "Content-Type: application/json" \
-     -H "x-api-secret: [REDACTED-API-SECRET]" \
+     -H "x-api-secret: xxxxx" \
      -d '{"data":[{"id":"test","title":"Test"}]}' \
-     http://62.169.25.188:3002/bookmarks
+     http://xxx.xxx.xxx.xxx:xxxx/bookmarks
 ```
 
 ---
@@ -1828,8 +1828,8 @@ npm install
 **2. Configuració .env:**
 ```env
 VITE_API_KEY=<gemini-api-key>
-VITE_STORAGE_API_URL=http://62.169.25.188:3002
-VITE_STORAGE_SECRET=[REDACTED-API-SECRET]
+VITE_STORAGE_API_URL=http://xxx.xxx.xxx.xxx:xxxx
+VITE_STORAGE_SECRET=xxxx
 ```
 
 **3. Executar dev server:**
@@ -2227,7 +2227,7 @@ cp db.json db.json.backup-$(date +%Y%m%d)  # Backup manual
 
 **Auth Header Required:**
 ```
-x-api-secret: [REDACTED-API-SECRET]
+x-api-secret: xxxxx
 ```
 
 ### D. Troubleshooting Comú
