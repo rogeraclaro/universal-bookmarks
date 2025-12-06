@@ -896,9 +896,6 @@ function loadBookmarks(): Bookmark[] {
 const API_URL = import.meta.env.VITE_STORAGE_API_URL
 const API_SECRET = import.meta.env.VITE_STORAGE_SECRET
 
-// Exemple:
-// API_URL = "http://62.169.25.188:3002"
-// API_SECRET = "[REDACTED-API-SECRET]"
 ```
 
 **Endpoints:**
