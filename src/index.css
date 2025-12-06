@@ -8,6 +8,14 @@
 
 /* Pots fer servir CSS normal o regles de Tailwind amb @apply */
 
+.reset {
+    display: none;
+}
+
+.bg-white.border-4.border-black.w-full.max-w-lg.shadow-\[8px_8px_0px_0px_\#000\].max-h-\[90vh\].overflow-y-auto.flex.flex-col {
+    max-width: 50rem !important;
+}
+
 @media only screen and (max-width: 768px) {
     header {
         margin-top: 55px;
