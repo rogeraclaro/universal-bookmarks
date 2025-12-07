@@ -23,7 +23,7 @@ export interface Bookmark {
   author: string;      // New field
   originalLink: string;
   externalLinks: string[];
-  category: string;
+  categories: string[]; // Changed from 'category' to 'categories' array
   createdAt: number;
 }
 
@@ -34,7 +34,7 @@ export interface ProcessedTweetResult {
   isAI: boolean;
   title: string;
   // description removed as we use raw text
-  category: string;
+  categories: string[]; // Changed from 'category' to 'categories' array
   externalLinks: string[];
   originalId: string;
 }
