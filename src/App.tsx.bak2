@@ -158,10 +158,6 @@ export default function App() {
 	const [newBookmarkMode, setNewBookmarkMode] = useState(false)
 	const [rejectedTweets, setRejectedTweets] = useState<TweetRaw[]>([])
 
-	// Drag and drop state for categories
-	const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null)
-	const [dragOverCategoryIndex, setDragOverCategoryIndex] = useState<number | null>(null)
-
 	// Review Modal States
 	const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
 	const [selectedTweetsForReview, setSelectedTweetsForReview] = useState<Set<string>>(new Set())
@@ -225,26 +221,9 @@ export default function App() {
 					storage.getCategories(),
 					storage.getDeletedIds(),
 				])
-				// Migrate old bookmarks: category (string) → categories (array)
-				const migratedBookmarks = loadedBookmarks.map((b: any) => {
-					if (!b.categories && b.category) {
-						// Old format: has 'category' field
-						return { ...b, categories: [b.category], category: undefined }
-					} else if (!b.categories) {
-						// No categories at all, assign default
-						return { ...b, categories: ['Altres'] }
-					}
-					return b
-				})
-
-				setBookmarks(migratedBookmarks)
+				setBookmarks(loadedBookmarks)
 				setCategories(loadedCategories)
 				setDeletedIds(loadedDeletedIds)
-
-				// Save migrated data if changes were made
-				if (migratedBookmarks.some((b: any, i: number) => b !== loadedBookmarks[i])) {
-					storage.saveBookmarks(migratedBookmarks)
-				}
 
 				// Check for search query in URL
 				const urlParams = new URLSearchParams(window.location.search)
@@ -884,43 +863,6 @@ export default function App() {
 		})
 	}
 
-	// Drag and Drop handlers for categories
-	const handleCategoryDragStart = (index: number) => {
-		setDraggedCategoryIndex(index)
-	}
-
-	const handleCategoryDragOver = (e: React.DragEvent, index: number) => {
-		e.preventDefault()
-		setDragOverCategoryIndex(index)
-	}
-
-	const handleCategoryDrop = (e: React.DragEvent, dropIndex: number) => {
-		e.preventDefault()
-
-		if (draggedCategoryIndex === null || draggedCategoryIndex === dropIndex) {
-			setDraggedCategoryIndex(null)
-			setDragOverCategoryIndex(null)
-			return
-		}
-
-		// Reorder categories
-		const newCategories = [...categories]
-		const draggedCategory = newCategories[draggedCategoryIndex]
-		newCategories.splice(draggedCategoryIndex, 1)
-		newCategories.splice(dropIndex, 0, draggedCategory)
-
-		setCategories(newCategories)
-		storage.saveCategories(newCategories)
-
-		setDraggedCategoryIndex(null)
-		setDragOverCategoryIndex(null)
-	}
-
-	const handleCategoryDragEnd = () => {
-		setDraggedCategoryIndex(null)
-		setDragOverCategoryIndex(null)
-	}
-
 	// Search Function
 	const handleSearch = (query: string) => {
 		if (!query.trim()) {
@@ -956,8 +898,7 @@ export default function App() {
 
 		bookmarks.forEach((b) => {
 			// Add bookmark to ALL its categories
-			const cats = b.categories || ['Altres']  // Fallback for safety
-			cats.forEach((cat) => {
+			b.categories.forEach((cat) => {
 				if (groups[cat]) {
 					groups[cat].push(b)
 				} else {
@@ -1375,15 +1316,13 @@ export default function App() {
 											type='checkbox'
 											checked={editingBookmark.categories.includes(cat)}
 											onChange={(e) => {
-
+												const isChecked = e.target.checked
 												setEditingBookmark({
-
 													...editingBookmark,
-
-													categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-
+													categories: isChecked
+														? [...editingBookmark.categories, cat]
+														: editingBookmark.categories.filter(c => c !== cat)
 												})
-
 											}}
 											className='w-4 h-4 border-2 border-black'
 										/>
@@ -1472,29 +1411,12 @@ export default function App() {
 				</div>
 
 				<div className='flex flex-col gap-2'>
-					<p className='text-sm text-gray-600 font-mono mb-2'>
-						💡 Arrossega les categories per canviar l'ordre
-					</p>
-					{categories.map((cat, index) => (
+					{categories.map((cat) => (
 						<div
 							key={cat}
-							draggable={true}
-							onDragStart={() => handleCategoryDragStart(index)}
-							onDragOver={(e) => handleCategoryDragOver(e, index)}
-							onDrop={(e) => handleCategoryDrop(e, index)}
-							onDragEnd={handleCategoryDragEnd}
-							className={`flex justify-between items-center bg-gray-50 p-3 border-2 border-black cursor-move transition-all ${
-								draggedCategoryIndex === index ? 'opacity-50 scale-95' : ''
-							} ${
-								dragOverCategoryIndex === index && draggedCategoryIndex !== index
-									? 'border-blue-500 bg-blue-50'
-									: ''
-							}`}
+							className='flex justify-between items-center bg-gray-50 p-3 border-2 border-black'
 						>
-							<div className='flex items-center gap-3'>
-								<span className='text-gray-400 select-none'>☰</span>
-								<span className='font-mono font-bold'>{cat}</span>
-							</div>
+							<span className='font-mono font-bold'>{cat}</span>
 							<button
 								onClick={() => handleCategoryDelete(cat)}
 								className='text-red-500 hover:bg-red-100 p-2 border border-transparent hover:border-red-500 transition-all'
@@ -1709,15 +1631,13 @@ export default function App() {
 												type='checkbox'
 												checked={editingBookmark.categories.includes(cat)}
 												onChange={(e) => {
-
+													const isChecked = e.target.checked
 													setEditingBookmark({
-
 														...editingBookmark,
-
-														categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-
+														categories: isChecked
+															? [...editingBookmark.categories, cat]
+															: editingBookmark.categories.filter(c => c !== cat)
 													})
-
 												}}
 												className='w-4 h-4 border-2 border-black'
 											/>

@@ -73,7 +73,11 @@ const processBatch = async (
         isAI: { type: Type.BOOLEAN, description: "Is this tweet related to Artificial Intelligence?" },
         title: { type: Type.STRING, description: "A VERY short descriptive title in Catalan (max 80 characters, 10 words)" },
         description: { type: Type.STRING, description: "A summary of the content in Catalan" },
-        category: { type: Type.STRING, description: "The assigned category" },
+        categories: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "Array of assigned categories. A tweet can belong to multiple categories if it covers multiple topics."
+        },
         externalLinks: {
           type: Type.ARRAY,
           items: { type: Type.STRING },
@@ -244,7 +248,7 @@ export const processBookmarksWithGemini = async (
             title: tweetText.length > 80
               ? tweetText.substring(0, 77) + "..."
               : tweetText || "Tweet sobre IA",
-            category: "Altres", // Default category for unprocessed tweets
+            categories: ["Altres"], // Default category for unprocessed tweets
             externalLinks: originalTweet.entities?.urls?.map((u: any) => u.expanded_url).filter((url: string) =>
               !url.includes('twitter.com') && !url.includes('x.com')
             ) || []
