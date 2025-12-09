@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { ExtractedMetadata, Bookmark } from '../shared/types';
 import { UI_STRINGS, ERRORS } from '../shared/config';
 
@@ -27,10 +27,23 @@ export default function Popup() {
         throw new Error('No active tab');
       }
 
-      // Get metadata from content script
-      const metadataResponse = await chrome.tabs.sendMessage(tab.id, { type: 'GET_METADATA' });
+      // Try to get metadata from content script
+      let metadataResponse;
+      try {
+        metadataResponse = await chrome.tabs.sendMessage(tab.id, { type: 'GET_METADATA' });
+      } catch {
+        // Content script not loaded - inject it first
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content/content.js']
+        });
+        // Wait a bit for script to initialize
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Try again
+        metadataResponse = await chrome.tabs.sendMessage(tab.id, { type: 'GET_METADATA' });
+      }
 
-      if (!metadataResponse.success) {
+      if (!metadataResponse || !metadataResponse.success) {
         throw new Error('Failed to extract metadata');
       }
 

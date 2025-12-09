@@ -43,7 +43,7 @@ function extractMetadata(): ExtractedMetadata {
 }
 
 // Listen for messages from popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'GET_METADATA') {
     const metadata = extractMetadata();
     sendResponse({ success: true, data: metadata });
