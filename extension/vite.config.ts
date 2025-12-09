@@ -25,6 +25,13 @@ export default defineConfig({
         },
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
+        // Inline all imports for service worker and content script
+        manualChunks: (id) => {
+          // Don't split chunks for service worker dependencies
+          if (id.includes('shared/api') || id.includes('shared/config') || id.includes('shared/types')) {
+            return undefined; // Will be inlined
+          }
+        },
       },
     },
   },

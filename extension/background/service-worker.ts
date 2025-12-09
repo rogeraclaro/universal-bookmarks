@@ -1,5 +1,5 @@
-import { getBookmarks, getCategories, saveBookmark, isDuplicate } from '../shared/api';
-import type { Bookmark, Message, MessageResponse } from '../shared/types';
+import { getCategories, saveBookmark, isDuplicate } from '../shared/api';
+import type { Bookmark, Message } from '../shared/types';
 
 // Cache categories to reduce API calls
 let categoriesCache: string[] | null = null;
@@ -27,7 +27,7 @@ async function getCachedCategories(): Promise<string[]> {
 }
 
 // Handle messages from popup
-chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
 
   if (message.type === 'CHECK_DUPLICATE') {
     // Check if URL already exists
@@ -60,7 +60,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
 });
 
 // Export function for popup to get categories
-chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   if (message.type === 'GET_CATEGORIES') {
     getCachedCategories()
       .then(categories => {

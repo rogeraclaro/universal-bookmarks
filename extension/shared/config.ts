@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'http://ailinksdb.masellas.info/api',
+  BASE_URL: 'https://ailinksdb.masellas.info/api',
   SECRET: '[REDACTED-API-SECRET]',
   HEADERS: {
     'Content-Type': 'application/json',

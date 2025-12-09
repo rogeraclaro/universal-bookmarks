@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { getTrialInfo } from '../services/geminiService';
-import { AlertTriangle, Zap } from 'lucide-react';
+import { AlertTriangle, Zap, X } from 'lucide-react';
 
 export const TrialCountdown: React.FC = () => {
   const [trialInfo, setTrialInfo] = useState(getTrialInfo());
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     // Update trial info every hour
@@ -14,8 +15,8 @@ export const TrialCountdown: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (!trialInfo.isTrialActive) {
-    return null; // Don't show anything if trial is not active
+  if (!trialInfo.isTrialActive || isDismissed) {
+    return null; // Don't show anything if trial is not active or dismissed
   }
 
   const isWarning = trialInfo.warningThreshold;
@@ -26,7 +27,14 @@ export const TrialCountdown: React.FC = () => {
         isWarning ? 'bg-red-400' : 'bg-yellow-400'
       }`}
     >
-      <div className='flex items-start gap-3'>
+      <button
+        onClick={() => setIsDismissed(true)}
+        className='absolute top-2 right-2 p-1 hover:bg-black/10 rounded transition-colors'
+        aria-label='Tancar'
+      >
+        <X size={16} className='text-black' />
+      </button>
+      <div className='flex items-start gap-3 pr-4'>
         <div className='flex-shrink-0'>
           {isWarning ? (
             <AlertTriangle size={24} className='text-black' />
