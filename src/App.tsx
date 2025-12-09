@@ -20,6 +20,7 @@ import type { Bookmark, Category, TweetRaw, LogEntry } from './types'
 import { processBookmarksWithGemini } from './services/geminiService'
 import { storage } from './services/storage'
 import { Button, Input, Label, TextArea, Badge, Modal } from './components/UI'
+import { TrialCountdown } from './components/TrialCountdown'
 import { strings } from './translations'
 
 // --- Helper Components ---
@@ -1790,6 +1791,9 @@ export default function App() {
 					</div>
 				</Modal>
 			)}
+
+			{/* Trial Countdown Widget */}
+			<TrialCountdown />
 		</div>
 	)
 }

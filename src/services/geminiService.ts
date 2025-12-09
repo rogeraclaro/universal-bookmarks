@@ -5,6 +5,29 @@ import { strings } from "../translations";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Gemini API Trial Configuration
+// Trial start date: 2025-12-08 (when pay-as-you-go was activated)
+// Trial ends: 2026-03-08 (90 days later)
+const TRIAL_START_DATE = new Date('2025-12-08');
+const TRIAL_END_DATE = new Date('2026-03-08');
+const TRIAL_ACTIVE = Date.now() < TRIAL_END_DATE.getTime();
+
+// Rate limits based on trial status
+const RATE_LIMITS = {
+  TRIAL: {
+    RPM: 2000,
+    DELAY_MS: 100,  // 60s / 2000 RPM ≈ 0.03s, but we use 100ms to be safe
+    MAX_RETRIES: 5
+  },
+  FREE: {
+    RPM: 5,
+    DELAY_MS: 13000,  // 60s / 5 RPM = 12s, we use 13s to be safe
+    MAX_RETRIES: 3
+  }
+};
+
+const CURRENT_LIMITS = TRIAL_ACTIVE ? RATE_LIMITS.TRIAL : RATE_LIMITS.FREE;
+
 // Clean titles that contain contamination from other JSON fields
 const cleanContaminatedTitle = (title: string): string => {
   if (!title) return title;
@@ -173,10 +196,10 @@ export const processBookmarksWithGemini = async (
 
     // Retry logic with exponential backoff
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = CURRENT_LIMITS.MAX_RETRIES;
     let success = false;
     // Start with a significant delay if we hit a rate limit to allow quota to reset
-    let backoffDelay = 10000;
+    let backoffDelay = 15000;
 
     while (attempts < maxAttempts && !success) {
       if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -188,12 +211,10 @@ export const processBookmarksWithGemini = async (
         success = true;
         onLog(strings.logs.batchSuccess, 'success');
 
-        // Successful request throttling
-        // Free tier is ~15 RPM. 60s / 15 = 4s per request.
-        // We add a 4000ms delay to be safe and avoid hitting the limit constantly.
+        // Dynamic request throttling based on trial status
         if (i + BATCH_SIZE < validTweets.length) {
           onLog(strings.logs.cooldown, 'info');
-          await delay(4000);
+          await delay(CURRENT_LIMITS.DELAY_MS);
         }
 
       } catch (error: any) {
@@ -264,4 +285,19 @@ export const processBookmarksWithGemini = async (
 
   onProgress(validTweets.length, validTweets.length);
   return results;
+};
+
+// Export trial information for UI
+export const getTrialInfo = () => {
+  const now = Date.now();
+  const daysRemaining = Math.ceil((TRIAL_END_DATE.getTime() - now) / (1000 * 60 * 60 * 24));
+
+  return {
+    isTrialActive: TRIAL_ACTIVE,
+    trialStartDate: TRIAL_START_DATE,
+    trialEndDate: TRIAL_END_DATE,
+    daysRemaining: Math.max(0, daysRemaining),
+    currentLimits: CURRENT_LIMITS,
+    warningThreshold: daysRemaining <= 7 && daysRemaining > 0
+  };
 };
