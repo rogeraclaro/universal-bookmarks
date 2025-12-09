@@ -1091,8 +1091,8 @@ export default function App() {
 
 			{/* Desktop Sticky Category Nav (Hidden on Mobile) */}
 			{bookmarks.length > 0 && (
-				<div className='hidden md:block sticky top-0 z-40 bg-[#f0f0f0]/95 backdrop-blur border-b-2 border-black py-3 px-6 overflow-x-auto shadow-sm'>
-					<div className='max-w-[1600px] mx-auto flex items-center gap-4'>
+				<div className='hidden md:block sticky top-0 z-40 bg-[#f0f0f0]/95 backdrop-blur border-b-2 border-black py-3 px-6 shadow-sm'>
+					<div className='max-w-[1600px] mx-auto flex flex-wrap items-center gap-3'>
 						<span className='font-mono font-bold uppercase text-xs text-gray-500 whitespace-nowrap'>
 							{strings.app.jumpTo}
 						</span>
@@ -1104,7 +1104,7 @@ export default function App() {
 							<Search size={14} />
 							CERCAR
 						</button>
-						<div className='flex gap-2'>
+						<div className='flex flex-wrap gap-2'>
 							{categories.map((cat) => {
 								const count = groupedBookmarks[cat]?.length || 0
 								if (count === 0) return null
@@ -1369,22 +1369,17 @@ export default function App() {
 
 						<div>
 							<Label>{strings.modal.labelCategory}</Label>
-							<div className='space-y-2 border-2 border-black p-3 bg-gray-50 max-h-48 overflow-y-auto'>
+							<div className='space-y-2 border-2 border-black p-3 bg-gray-50 max-h-64 overflow-y-auto'>
 								{categories.map((cat) => (
 									<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
 										<input
 											type='checkbox'
 											checked={editingBookmark.categories.includes(cat)}
 											onChange={(e) => {
-
 												setEditingBookmark({
-
 													...editingBookmark,
-
 													categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-
 												})
-
 											}}
 											className='w-4 h-4 border-2 border-black'
 										/>
@@ -1703,22 +1698,17 @@ export default function App() {
 
 							<div>
 								<Label>{strings.modal.labelCategory}</Label>
-								<div className='space-y-2 border-2 border-black p-3 bg-gray-50 max-h-48 overflow-y-auto'>
+								<div className='space-y-2 border-2 border-black p-3 bg-gray-50 max-h-64 overflow-y-auto'>
 									{categories.map((cat) => (
 										<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
 											<input
 												type='checkbox'
 												checked={editingBookmark.categories.includes(cat)}
 												onChange={(e) => {
-
 													setEditingBookmark({
-
 														...editingBookmark,
-
 														categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-
 													})
-
 												}}
 												className='w-4 h-4 border-2 border-black'
 											/>
