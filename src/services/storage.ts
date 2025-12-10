@@ -115,5 +115,17 @@ export const storage = {
     localStorage.removeItem(KEYS.BOOKMARKS);
     localStorage.removeItem(KEYS.CATEGORIES);
     localStorage.removeItem(KEYS.DELETED_IDS);
+  },
+
+  async clearBookmarks(): Promise<void> {
+    if (USE_API) {
+      await apiRequest('bookmarks', 'POST', { data: [] });
+      await apiRequest('deleted', 'POST', { data: [] });
+      localStorage.removeItem(KEYS.BOOKMARKS);
+      localStorage.removeItem(KEYS.DELETED_IDS);
+      return;
+    }
+    localStorage.removeItem(KEYS.BOOKMARKS);
+    localStorage.removeItem(KEYS.DELETED_IDS);
   }
 };

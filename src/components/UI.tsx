@@ -78,10 +78,17 @@ export const Badge: React.FC<{ children: React.ReactNode; color?: string }> = ({
   </span>
 );
 
-export const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  priority?: 'normal' | 'high';
+}> = ({ isOpen, onClose, title, children, priority = 'normal' }) => {
   if (!isOpen) return null;
+  const zIndex = priority === 'high' ? 'z-[60]' : 'z-50';
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm`}>
       <div className="bg-white border-4 border-black w-full max-w-lg shadow-[8px_8px_0px_0px_#000] max-h-[90vh] flex flex-col">
         <div className="flex-shrink-0 flex justify-between items-center p-4 border-b-2 border-black bg-yellow-400">
           <h2 className="font-bold text-xl font-mono uppercase truncate pr-4">{title}</h2>
