@@ -96,7 +96,7 @@ export const strings = {
     3. Si ÉS relacionat amb IA:
        - Marca 'isAI' com a true.
        - Genera un 'title' MOLT CURT (màxim 10 paraules, 80 caràcters) i descriptiu en CATALÀ.
-       - Assigna una 'category' de la següent llista: [${categoriesString}]. Si no encaixa bé, fes servir 'Altres'.
+       - Assigna una o més 'categories' de la següent llista: [${categoriesString}]. Un tuit pot pertànyer a múltiples categories si tracta diversos temes. Si no encaixa bé, fes servir 'Altres'.
        - Extreu enllaços externs rellevants ('externalLinks') que apareguin al text o metadades, excloent enllaços a twitter.com o x.com.
 
     NOTA: NO generis un resum ni descripció. Farem servir el text original.

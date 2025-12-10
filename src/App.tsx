@@ -21,6 +21,7 @@ import { processBookmarksWithGemini } from './services/geminiService'
 import { storage } from './services/storage'
 import { Button, Input, Label, TextArea, Badge, Modal } from './components/UI'
 import { TrialCountdown } from './components/TrialCountdown'
+import { ScrollToTop } from './components/ScrollToTop'
 import { strings } from './translations'
 
 // --- Helper Components ---
@@ -350,9 +351,8 @@ export default function App() {
 			message: strings.alerts.confirmReset,
 			isDanger: true,
 			onConfirm: async () => {
-				await storage.clearData()
+				await storage.clearBookmarks()
 				setBookmarks([])
-				setCategories(strings.defaults.categories)
 				setRejectedTweets([])
 				setDeletedIds([])
 				setConfirmModal(null)
@@ -1336,7 +1336,7 @@ export default function App() {
 
 			{/* Generic Confirmation Modal (Replaces confirm() dialogs) */}
 			{confirmModal && (
-				<Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal(null)} title={confirmModal.title}>
+				<Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal(null)} title={confirmModal.title} priority="high">
 					<div className='mb-8'>
 						<p className='font-mono text-base whitespace-pre-wrap'>{confirmModal.message}</p>
 					</div>
@@ -1369,23 +1369,49 @@ export default function App() {
 
 						<div>
 							<Label>{strings.modal.labelCategory}</Label>
-							<div className='space-y-2 border-2 border-black p-3 bg-gray-50 max-h-64 overflow-y-auto'>
-								{categories.map((cat) => (
-									<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
-										<input
-											type='checkbox'
-											checked={editingBookmark.categories.includes(cat)}
-											onChange={(e) => {
-												setEditingBookmark({
-													...editingBookmark,
-													categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-												})
-											}}
-											className='w-4 h-4 border-2 border-black'
-										/>
-										<span className='font-mono'>{cat}</span>
-									</label>
-								))}
+							<div className='border-2 border-black bg-gray-50'>
+								{/* Quick Add Category */}
+								<div className='p-2 border-b-2 border-black bg-yellow-50 flex gap-2'>
+									<input
+										type='text'
+										placeholder='Nova categoria...'
+										value={newCategoryName}
+										onChange={(e) => setNewCategoryName(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === 'Enter') {
+												e.preventDefault()
+												handleCategoryAdd()
+											}
+										}}
+										className='flex-1 bg-white border-2 border-black px-2 py-1 text-sm font-mono focus:outline-none focus:bg-yellow-50'
+									/>
+									<button
+										onClick={handleCategoryAdd}
+										disabled={!newCategoryName || categories.includes(newCategoryName)}
+										className='px-3 py-1 bg-black text-white border-2 border-black font-bold text-sm hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 transition-colors'
+									>
+										<Plus size={16} />
+									</button>
+								</div>
+								{/* Category List */}
+								<div className='p-3 space-y-2 max-h-64 overflow-y-auto'>
+									{categories.map((cat) => (
+										<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
+											<input
+												type='checkbox'
+												checked={editingBookmark.categories.includes(cat)}
+												onChange={(e) => {
+													setEditingBookmark({
+														...editingBookmark,
+														categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
+													})
+												}}
+												className='w-4 h-4 border-2 border-black'
+											/>
+											<span className='font-mono'>{cat}</span>
+										</label>
+									))}
+								</div>
 							</div>
 						</div>
 
@@ -1508,6 +1534,7 @@ export default function App() {
 				isOpen={deleteModalState.isOpen}
 				onClose={() => setDeleteModalState({ ...deleteModalState, isOpen: false })}
 				title={strings.modal.deleteTitle}
+				priority="high"
 			>
 				<div className='mb-8'>
 					<p className='font-mono text-lg'>{strings.alerts.confirmDelete}</p>
@@ -1698,23 +1725,49 @@ export default function App() {
 
 							<div>
 								<Label>{strings.modal.labelCategory}</Label>
-								<div className='space-y-2 border-2 border-black p-3 bg-gray-50 max-h-64 overflow-y-auto'>
-									{categories.map((cat) => (
-										<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
-											<input
-												type='checkbox'
-												checked={editingBookmark.categories.includes(cat)}
-												onChange={(e) => {
-													setEditingBookmark({
-														...editingBookmark,
-														categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-													})
-												}}
-												className='w-4 h-4 border-2 border-black'
-											/>
-											<span className='font-mono'>{cat}</span>
-										</label>
-									))}
+								<div className='border-2 border-black bg-gray-50'>
+									{/* Quick Add Category */}
+									<div className='p-2 border-b-2 border-black bg-yellow-50 flex gap-2'>
+										<input
+											type='text'
+											placeholder='Nova categoria...'
+											value={newCategoryName}
+											onChange={(e) => setNewCategoryName(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === 'Enter') {
+													e.preventDefault()
+													handleCategoryAdd()
+												}
+											}}
+											className='flex-1 bg-white border-2 border-black px-2 py-1 text-sm font-mono focus:outline-none focus:bg-yellow-50'
+										/>
+										<button
+											onClick={handleCategoryAdd}
+											disabled={!newCategoryName || categories.includes(newCategoryName)}
+											className='px-3 py-1 bg-black text-white border-2 border-black font-bold text-sm hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 transition-colors'
+										>
+											<Plus size={16} />
+										</button>
+									</div>
+									{/* Category List */}
+									<div className='p-3 space-y-2 max-h-64 overflow-y-auto'>
+										{categories.map((cat) => (
+											<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
+												<input
+													type='checkbox'
+													checked={editingBookmark.categories.includes(cat)}
+													onChange={(e) => {
+														setEditingBookmark({
+															...editingBookmark,
+															categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
+														})
+													}}
+													className='w-4 h-4 border-2 border-black'
+												/>
+												<span className='font-mono'>{cat}</span>
+											</label>
+										))}
+									</div>
 								</div>
 							</div>
 
@@ -1784,6 +1837,9 @@ export default function App() {
 
 			{/* Trial Countdown Widget */}
 			<TrialCountdown />
+
+			{/* Scroll to Top Button */}
+			<ScrollToTop />
 		</div>
 	)
 }
