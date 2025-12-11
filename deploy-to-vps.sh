@@ -7,14 +7,14 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  Deploy AI Bookmarks al VPS           ║${NC}"
+echo -e "${GREEN}║  Deploy Universal Bookmarks al VPS    ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo ""
 
 # Variables de configuració
 VPS_IP="62.169.25.188"
 VPS_USER="root"
-VPS_DIR="/home/masellas-ailinksdb/htdocs/ailinksdb.masellas.info"
+VPS_DIR="/home/masellas-links/htdocs/links.masellas.info"
 LOCAL_DIST="./dist"
 
 # Verificar que existeix el directori dist/
@@ -65,7 +65,7 @@ if [ $? -eq 0 ]; then
     echo -e "${YELLOW}📋 Propers passos:${NC}"
     echo -e "   1. Configurar Nginx (segueix les instruccions)"
     echo -e "   2. Reiniciar Nginx"
-    echo -e "   3. Accedir a: ${GREEN}http://ailinksdb.masellas.info${NC}"
+    echo -e "   3. Accedir a: ${GREEN}https://links.masellas.info${NC}"
     echo ""
 else
     echo ""
