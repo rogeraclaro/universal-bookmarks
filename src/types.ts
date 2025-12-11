@@ -31,7 +31,6 @@ export type Category = string;
 
 // Gemini Service Types
 export interface ProcessedTweetResult {
-  isAI: boolean;
   title: string;
   // description removed as we use raw text
   categories: string[]; // Changed from 'category' to 'categories' array

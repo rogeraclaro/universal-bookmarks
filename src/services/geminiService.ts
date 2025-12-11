@@ -36,7 +36,6 @@ const cleanContaminatedTitle = (title: string): string => {
   // These appear when Gemini's response gets truncated mid-JSON
   const contaminationPatterns = [
     /[",]['"]category['"]:/i,
-    /[",]['"]isAI['"]:/i,
     /[",]['"]externalLinks['"]:/i,
     /[",]['"]originalId['"]:/i,
   ];
@@ -92,14 +91,13 @@ const processBatch = async (
     items: {
       type: Type.OBJECT,
       properties: {
-        originalId: { type: Type.STRING, description: "The ID of the processed tweet" },
-        isAI: { type: Type.BOOLEAN, description: "Is this tweet related to Artificial Intelligence?" },
+        originalId: { type: Type.STRING, description: "The ID of the processed content" },
         title: { type: Type.STRING, description: "A VERY short descriptive title in Catalan (max 80 characters, 10 words)" },
         description: { type: Type.STRING, description: "A summary of the content in Catalan" },
         categories: {
           type: Type.ARRAY,
           items: { type: Type.STRING },
-          description: "Array of assigned categories. A tweet can belong to multiple categories if it covers multiple topics."
+          description: "Array of assigned categories. Content can belong to multiple categories if it covers multiple topics."
         },
         externalLinks: {
           type: Type.ARRAY,
@@ -107,7 +105,7 @@ const processBatch = async (
           description: "List of relevant external URLs found"
         },
       },
-      required: ["originalId", "isAI"],
+      required: ["originalId"],
     },
   };
 
@@ -265,11 +263,10 @@ export const processBookmarksWithGemini = async (
           // Create fallback result with minimal processing
           const fallbackResult: ProcessedTweetResult = {
             originalId: originalTweet.id_str || originalTweet.id || Math.random().toString(),
-            isAI: false, // Mark as non-AI so user can review manually
             title: tweetText.length > 80
               ? tweetText.substring(0, 77) + "..."
-              : tweetText || "Tweet sobre IA",
-            categories: ["Altres"], // Default category for unprocessed tweets
+              : tweetText || "Contingut sense títol",
+            categories: ["Altres"], // Default category for unprocessed content
             externalLinks: originalTweet.entities?.urls?.map((u: any) => u.expanded_url).filter((url: string) =>
               !url.includes('twitter.com') && !url.includes('x.com')
             ) || []

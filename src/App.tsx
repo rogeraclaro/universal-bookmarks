@@ -9,7 +9,6 @@ import {
 	Twitter,
 	Link as LinkIcon,
 	Download,
-	FileDown,
 	Hash,
 	Menu,
 	Calendar,
@@ -20,7 +19,6 @@ import type { Bookmark, Category, TweetRaw, LogEntry } from './types'
 import { processBookmarksWithGemini } from './services/geminiService'
 import { storage } from './services/storage'
 import { Button, Input, Label, TextArea, Badge, Modal } from './components/UI'
-import { TrialCountdown } from './components/TrialCountdown'
 import { ScrollToTop } from './components/ScrollToTop'
 import { strings } from './translations'
 
@@ -53,7 +51,7 @@ const BookmarkCard: React.FC<{
 							e.stopPropagation()
 							onEdit(bookmark)
 						}}
-						className='p-1.5 hover:bg-yellow-300 border border-transparent hover:border-black transition-colors'
+						className='p-1.5 hover:bg-green-300 border border-transparent hover:border-black transition-colors'
 						title={strings.modal.editTitle}
 					>
 						<Edit2 size={16} />
@@ -158,26 +156,25 @@ export default function App() {
 	const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
 	const [newCategoryName, setNewCategoryName] = useState('')
 	const [newBookmarkMode, setNewBookmarkMode] = useState(false)
-	const [rejectedTweets, setRejectedTweets] = useState<TweetRaw[]>([])
 
 	// Drag and drop state for categories
 	const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null)
 	const [dragOverCategoryIndex, setDragOverCategoryIndex] = useState<number | null>(null)
 
-	// Review Modal States
-	const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
-	const [selectedTweetsForReview, setSelectedTweetsForReview] = useState<Set<string>>(new Set())
-	const [tweetsToEdit, setTweetsToEdit] = useState<TweetRaw[]>([])
-	const [currentEditIndex, setCurrentEditIndex] = useState(0)
+	// Review Modal States - REMOVED for Universal Bookmarks
+	// const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+	// const [selectedTweetsForReview, setSelectedTweetsForReview] = useState<Set<string>>(new Set())
+	// const [tweetsToEdit, setTweetsToEdit] = useState<TweetRaw[]>([])
+	// const [currentEditIndex, setCurrentEditIndex] = useState(0)
 
-	// Carousel Modal State (new flow)
-	const [isCarouselModalOpen, setIsCarouselModalOpen] = useState(false)
-	const [carouselTweets, setCarouselTweets] = useState<TweetRaw[]>([])
-	const [carouselIndex, setCarouselIndex] = useState(0)
-	const [editedTweetsInCarousel, setEditedTweetsInCarousel] = useState<Bookmark[]>([])
+	// Carousel Modal State (new flow) - REMOVED for Universal Bookmarks
+	// const [isCarouselModalOpen, setIsCarouselModalOpen] = useState(false)
+	// const [carouselTweets, setCarouselTweets] = useState<TweetRaw[]>([])
+	// const [carouselIndex, setCarouselIndex] = useState(0)
+	// const [editedTweetsInCarousel, setEditedTweetsInCarousel] = useState<Bookmark[]>([])
 
-	// Pending review state (persisted)
-	const [hasPendingReview, setHasPendingReview] = useState(false)
+	// Pending review state (persisted) - REMOVED for Universal Bookmarks
+	// const [hasPendingReview, setHasPendingReview] = useState(false)
 
 	// Mobile Menu State
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -321,19 +318,6 @@ export default function App() {
 		URL.revokeObjectURL(url)
 	}
 
-	const handleDownloadRejected = () => {
-		if (rejectedTweets.length === 0) return
-
-		const blob = new Blob([JSON.stringify(rejectedTweets, null, 2)], { type: 'application/json' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = `non-ai-tweets-${new Date().toISOString().split('T')[0]}.json`
-		document.body.appendChild(a)
-		a.click()
-		document.body.removeChild(a)
-		URL.revokeObjectURL(url)
-	}
 
 	const handleStop = () => {
 		if (abortControllerRef.current) {
@@ -353,7 +337,6 @@ export default function App() {
 			onConfirm: async () => {
 				await storage.clearBookmarks()
 				setBookmarks([])
-				setRejectedTweets([])
 				setDeletedIds([])
 				setConfirmModal(null)
 				window.location.reload()
@@ -415,17 +398,7 @@ export default function App() {
 				signal
 			)
 
-			const aiResults = processed.filter((p) => p.isAI)
-			const nonAiIds = new Set(processed.filter((p) => !p.isAI).map((p) => p.originalId))
-
-			const newRejectedTweets = uniqueTweets.filter((t) => {
-				const id = t.id_str || t.id
-				return id && nonAiIds.has(String(id))
-			})
-
-			setRejectedTweets((prev) => [...prev, ...newRejectedTweets])
-
-			const newItems: Bookmark[] = aiResults.map((p) => {
+			const newItems: Bookmark[] = processed.map((p) => {
 				// Find original tweet to get text fallback
 				const originalTweet = uniqueTweets.find((t) => (t.id_str || t.id) === p.originalId)
 
@@ -477,19 +450,12 @@ export default function App() {
 			addLog(strings.logs.finished, 'success')
 			setIsLoading(false)
 
-			// If there are rejected tweets, open review modal instead of showing result
-			if (newRejectedTweets.length > 0) {
-				setHasPendingReview(true)
-				setIsReviewModalOpen(true)
-			} else {
-				setResultModal({
-					title: strings.modal.successTitle,
-					message: strings.alerts.importResult
-						.replace('{0}', String(newItems.length))
-						.replace('{1}', String(skippedCount))
-						.replace('{2}', String(newRejectedTweets.length)),
-				})
-			}
+			setResultModal({
+				title: strings.modal.successTitle,
+				message: strings.alerts.importResult
+					.replace('{0}', String(newItems.length))
+					.replace('{1}', String(skippedCount)),
+			})
 		} catch (error: any) {
 			if (error.name === 'AbortError') {
 				console.log('Processing aborted by user')
@@ -635,7 +601,8 @@ export default function App() {
 		setEditingBookmark(null)
 	}
 
-	// Review Modal Handlers
+	// Review Modal Handlers - REMOVED for Universal Bookmarks
+	/*
 	const toggleTweetSelection = (tweetId: string) => {
 		setSelectedTweetsForReview((prev) => {
 			const next = new Set(prev)
@@ -852,6 +819,8 @@ export default function App() {
 			})
 		}
 	}
+	*/
+	// END OF REMOVED REVIEW MODAL CODE
 
 	const handleCategoryAdd = () => {
 		if (newCategoryName && !categories.includes(newCategoryName)) {
@@ -1018,24 +987,13 @@ export default function App() {
 								disabled={isLoading}
 							/>
 							<div
-								className={`font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-yellow-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
+								className={`font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-green-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
 									isLoading ? 'cursor-not-allowed opacity-50' : ''
 								}`}
 							>
 								<Upload size={18} /> {strings.app.importJson}
 							</div>
 						</label>
-
-						{rejectedTweets.length > 0 && !isLoading && (
-							<Button
-								onClick={handleDownloadRejected}
-								variant='secondary'
-								className='py-2.5 px-4'
-								icon={<FileDown size={18} />}
-							>
-								{strings.app.downloadRejected.replace('{0}', String(rejectedTweets.length))}
-							</Button>
-						)}
 
 						<div className='h-8 w-px bg-gray-300 mx-1'></div>
 
@@ -1066,17 +1024,6 @@ export default function App() {
 							{strings.app.categories}
 						</Button>
 
-						{hasPendingReview && rejectedTweets.length > 0 && (
-							<Button
-								onClick={() => setIsReviewModalOpen(true)}
-								variant='primary'
-								className='py-2.5 px-4 bg-orange-500 border-orange-500 hover:bg-orange-600'
-								icon={<Edit2 size={18} />}
-							>
-								Revisar Pendents ({rejectedTweets.length})
-							</Button>
-						)}
-
 						<Button
 							onClick={handleResetData}
 							variant='danger'
@@ -1098,7 +1045,7 @@ export default function App() {
 						</span>
 						<button
 							onClick={() => setIsSearchModalOpen(true)}
-							className='px-3 py-1 bg-yellow-400 border-2 border-black text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap shadow-[2px_2px_0px_0px_#000]'
+							className='px-3 py-1 bg-green-400 border-2 border-black text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap shadow-[2px_2px_0px_0px_#000]'
 							title='Cercar'
 						>
 							<Search size={14} />
@@ -1115,7 +1062,7 @@ export default function App() {
 										className='px-3 py-1 bg-white border border-black text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap shadow-[2px_2px_0px_0px_#ccc]'
 									>
 										{cat}
-										<span className='bg-yellow-400 text-black px-1.5 py-0.5 text-[10px] border border-black'>
+										<span className='bg-green-400 text-black px-1.5 py-0.5 text-[10px] border border-black'>
 											{count}
 										</span>
 									</button>
@@ -1130,7 +1077,7 @@ export default function App() {
 			<div className='md:hidden fixed top-4 left-1/2 -translate-x-1/2 z-50'>
 				<button
 					onClick={() => setIsMobileMenuOpen(true)}
-					className='bg-yellow-400 border-2 border-black px-4 py-2 font-bold font-mono text-sm shadow-[4px_4px_0px_0px_#000] flex items-center gap-2 active:translate-y-[2px] active:shadow-none'
+					className='bg-green-400 border-2 border-black px-4 py-2 font-bold font-mono text-sm shadow-[4px_4px_0px_0px_#000] flex items-center gap-2 active:translate-y-[2px] active:shadow-none'
 				>
 					<Menu size={18} /> CATEGORIES
 				</button>
@@ -1140,7 +1087,7 @@ export default function App() {
 			{isMobileMenuOpen && (
 				<div className='fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4'>
 					<div className='bg-white border-4 border-black w-full max-w-sm max-h-[80vh] overflow-y-auto flex flex-col shadow-[8px_8px_0px_0px_#fff]'>
-						<div className='p-4 border-b-2 border-black bg-yellow-400 flex justify-between items-center'>
+						<div className='p-4 border-b-2 border-black bg-green-400 flex justify-between items-center'>
 							<h2 className='font-bold text-xl uppercase font-mono'>{strings.app.categories}</h2>
 							<button onClick={() => setIsMobileMenuOpen(false)}>
 								<X size={24} />
@@ -1152,7 +1099,7 @@ export default function App() {
 									setIsMobileMenuOpen(false)
 									setIsSearchModalOpen(true)
 								}}
-								className='text-left font-bold font-mono text-lg border-2 border-black p-3 bg-yellow-400 hover:bg-black hover:text-white transition-all flex justify-between items-center shadow-[4px_4px_0px_0px_#000]'
+								className='text-left font-bold font-mono text-lg border-2 border-black p-3 bg-green-400 hover:bg-black hover:text-white transition-all flex justify-between items-center shadow-[4px_4px_0px_0px_#000]'
 							>
 								<span className='flex items-center gap-2'>
 									<Search size={18} />
@@ -1169,7 +1116,7 @@ export default function App() {
 										className='text-left font-bold font-mono text-lg border-2 border-black p-3 hover:bg-black hover:text-white transition-all flex justify-between items-center bg-white shadow-[4px_4px_0px_0px_#ccc]'
 									>
 										{cat}
-										<span className='bg-yellow-300 text-black text-xs px-2 py-1 border border-black'>
+										<span className='bg-green-300 text-black text-xs px-2 py-1 border border-black'>
 											{count}
 										</span>
 									</button>
@@ -1196,7 +1143,7 @@ export default function App() {
 				{searchQuery && (
 					<div>
 						<div className='flex items-center gap-4 mb-6 flex-wrap'>
-							<h2 className='text-3xl font-black uppercase bg-yellow-400 text-black px-4 py-2 inline-block shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] border-2 border-black'>
+							<h2 className='text-3xl font-black uppercase bg-green-400 text-black px-4 py-2 inline-block shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] border-2 border-black'>
 								Resultats: "{searchQuery}"
 							</h2>
 							<span className='font-mono font-bold text-xl text-gray-500'>
@@ -1276,7 +1223,7 @@ export default function App() {
 			>
 				<div className='flex flex-col gap-4'>
 					{isLoading && (
-						<div className='bg-yellow-50 border-2 border-black p-4 flex items-center justify-between'>
+						<div className='bg-green-50 border-2 border-black p-4 flex items-center justify-between'>
 							<div className='flex items-center gap-3'>
 								<div className='animate-spin h-5 w-5 border-2 border-black border-t-transparent rounded-full'></div>
 								<span className='font-bold font-mono text-sm'>
@@ -1371,7 +1318,7 @@ export default function App() {
 							<Label>{strings.modal.labelCategory}</Label>
 							<div className='border-2 border-black bg-gray-50'>
 								{/* Quick Add Category */}
-								<div className='p-2 border-b-2 border-black bg-yellow-50 flex gap-2'>
+								<div className='p-2 border-b-2 border-black bg-green-50 flex gap-2'>
 									<input
 										type='text'
 										placeholder='Nova categoria...'
@@ -1383,7 +1330,7 @@ export default function App() {
 												handleCategoryAdd()
 											}
 										}}
-										className='flex-1 bg-white border-2 border-black px-2 py-1 text-sm font-mono focus:outline-none focus:bg-yellow-50'
+										className='flex-1 bg-white border-2 border-black px-2 py-1 text-sm font-mono focus:outline-none focus:bg-green-50'
 									/>
 									<button
 										onClick={handleCategoryAdd}
@@ -1466,10 +1413,7 @@ export default function App() {
 							<Button variant='secondary' onClick={() => setIsEditModalOpen(false)}>
 								{strings.modal.btnCancel}
 							</Button>
-							<Button onClick={tweetsToEdit.length > 0 ? handleReviewTweetSave : saveBookmark}>
-								{tweetsToEdit.length > 0
-									? `${strings.modal.btnSave} (${currentEditIndex + 1}/${tweetsToEdit.length})`
-									: strings.modal.btnSave}
+							<Button onClick={saveBookmark}>
 							</Button>
 						</div>
 					</div>
@@ -1587,256 +1531,9 @@ export default function App() {
 				</div>
 			</Modal>
 
-			{/* Review Rejected Tweets Modal */}
-			<Modal
-				isOpen={isReviewModalOpen}
-				onClose={() => {
-					setIsReviewModalOpen(false)
-					setSelectedTweetsForReview(new Set())
-					// Show result modal when closing without reviewing
-					setResultModal({
-						title: strings.modal.successTitle,
-						message: strings.alerts.importResult
-							.replace('{0}', String(bookmarks.length))
-							.replace('{1}', '0')
-							.replace('{2}', String(rejectedTweets.length)),
-					})
-				}}
-				title='Revisar Tweets Descartats'
-			>
-				<div className='mb-4'>
-					<p className='font-mono text-sm mb-4'>
-						Gemini ha descartat {rejectedTweets.length} tweet{rejectedTweets.length !== 1 ? 's' : ''} perquè
-						no estan relacionats amb IA o han fallat el processament. Selecciona els que vulguis afegir
-						igualment:
-					</p>
-				</div>
+			{/* Review Rejected Tweets Modal - REMOVED for Universal Bookmarks */}
 
-				<div className='max-h-96 overflow-y-auto border-2 border-black p-4 mb-4'>
-					{rejectedTweets.map((tweet) => {
-						const tweetId = tweet.id_str || tweet.id || ''
-						const tweetText = tweet.full_text || tweet.text || ''
-						const isSelected = selectedTweetsForReview.has(String(tweetId))
-
-						return (
-							<div
-								key={tweetId}
-								className='mb-3 p-3 border-2 border-gray-300 hover:border-black transition-colors'
-							>
-								<label className='flex items-start gap-3 cursor-pointer'>
-									<input
-										type='checkbox'
-										checked={isSelected}
-										onChange={() => toggleTweetSelection(String(tweetId))}
-										className='mt-1 w-5 h-5 cursor-pointer'
-									/>
-									<div className='flex-1'>
-										<p className='font-mono text-sm whitespace-pre-wrap break-words'>
-											{tweetText.substring(0, 200)}
-											{tweetText.length > 200 ? '...' : ''}
-										</p>
-										<div className='flex items-center gap-3 mt-2'>
-											{tweet.author && (
-												<p className='text-xs text-gray-500'>{tweet.author.split('·')[0]}</p>
-											)}
-											<a
-												href={`https://twitter.com/i/web/status/${tweetId}`}
-												target='_blank'
-												rel='noopener noreferrer'
-												onClick={(e) => e.stopPropagation()}
-												className='text-xs text-blue-600 hover:underline flex items-center gap-1'
-											>
-												<Twitter size={12} /> Veure original
-											</a>
-										</div>
-									</div>
-								</label>
-							</div>
-						)
-					})}
-				</div>
-
-				<div className='flex justify-between gap-3'>
-					<div className='flex gap-3'>
-						<Button
-							variant='secondary'
-							onClick={() => {
-								// Revisió parcial: manté hasPendingReview true per poder tornar-hi
-								setIsReviewModalOpen(false)
-								// NO netegem selectedTweetsForReview ni editedTweetsInCarousel
-							}}
-						>
-							Revisió parcial
-						</Button>
-
-						<Button
-							variant='danger'
-							onClick={() => {
-								// Revisió finalitzada: neteja tot i tanca definitivament
-								setIsReviewModalOpen(false)
-								setSelectedTweetsForReview(new Set())
-								setHasPendingReview(false)
-								setEditedTweetsInCarousel([])
-								setRejectedTweets([])
-								setResultModal({
-									title: strings.modal.successTitle,
-									message: strings.alerts.importResult
-										.replace('{0}', String(bookmarks.length))
-										.replace('{1}', '0')
-										.replace('{2}', '0'),
-								})
-							}}
-						>
-							Revisió finalitzada
-						</Button>
-					</div>
-
-					<div className='flex gap-3'>
-						{editedTweetsInCarousel.length > 0 && (
-							<Button variant='primary' onClick={handleFinalAccept}>
-								Acceptar ({editedTweetsInCarousel.length} editats)
-							</Button>
-						)}
-						<Button onClick={handleConfirmReview} disabled={selectedTweetsForReview.size === 0}>
-							Revisar Seleccionats ({selectedTweetsForReview.size})
-						</Button>
-					</div>
-				</div>
-			</Modal>
-
-			{/* Carousel Modal for editing tweets one by one */}
-			{isCarouselModalOpen && editingBookmark && (
-				<Modal isOpen={isCarouselModalOpen} onClose={handleCarouselClose} title='Editar Tweets'>
-					<div className='space-y-4'>
-						{/* Counter */}
-						<div className='text-center font-mono text-sm text-gray-600 font-bold'>
-							{carouselIndex + 1} / {carouselTweets.length + editedTweetsInCarousel.length}
-						</div>
-
-						{/* Edit form */}
-						<div className='space-y-4'>
-							<div>
-								<Label>{strings.modal.labelTitle}</Label>
-								<Input
-									value={editingBookmark.title}
-									onChange={(e) => setEditingBookmark({ ...editingBookmark, title: e.target.value })}
-								/>
-							</div>
-
-							<div>
-								<Label>{strings.modal.labelCategory}</Label>
-								<div className='border-2 border-black bg-gray-50'>
-									{/* Quick Add Category */}
-									<div className='p-2 border-b-2 border-black bg-yellow-50 flex gap-2'>
-										<input
-											type='text'
-											placeholder='Nova categoria...'
-											value={newCategoryName}
-											onChange={(e) => setNewCategoryName(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === 'Enter') {
-													e.preventDefault()
-													handleCategoryAdd()
-												}
-											}}
-											className='flex-1 bg-white border-2 border-black px-2 py-1 text-sm font-mono focus:outline-none focus:bg-yellow-50'
-										/>
-										<button
-											onClick={handleCategoryAdd}
-											disabled={!newCategoryName || categories.includes(newCategoryName)}
-											className='px-3 py-1 bg-black text-white border-2 border-black font-bold text-sm hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 transition-colors'
-										>
-											<Plus size={16} />
-										</button>
-									</div>
-									{/* Category List */}
-									<div className='p-3 space-y-2 max-h-64 overflow-y-auto'>
-										{categories.map((cat) => (
-											<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
-												<input
-													type='checkbox'
-													checked={editingBookmark.categories.includes(cat)}
-													onChange={(e) => {
-														setEditingBookmark({
-															...editingBookmark,
-															categories: toggleCategory(cat, e.target.checked, editingBookmark.categories)
-														})
-													}}
-													className='w-4 h-4 border-2 border-black'
-												/>
-												<span className='font-mono'>{cat}</span>
-											</label>
-										))}
-									</div>
-								</div>
-							</div>
-
-							<div>
-								<Label>{strings.modal.labelDescription}</Label>
-								<TextArea
-									rows={6}
-									value={editingBookmark.description}
-									onChange={(e) => setEditingBookmark({ ...editingBookmark, description: e.target.value })}
-								/>
-							</div>
-
-							<div>
-								<Label>{strings.modal.labelAuthor}</Label>
-								<Input
-									value={editingBookmark.author || ''}
-									onChange={(e) => setEditingBookmark({ ...editingBookmark, author: e.target.value })}
-									placeholder='@username'
-								/>
-							</div>
-
-							<div>
-								<Label>{strings.modal.labelExternalLinks}</Label>
-								<Input
-									value={editingBookmark.externalLinks.join(', ')}
-									onChange={(e) =>
-										setEditingBookmark({
-											...editingBookmark,
-											externalLinks: e.target.value
-												.split(',')
-												.map((s) => s.trim())
-												.filter((s) => s),
-										})
-									}
-									placeholder={strings.modal.placeholderExternalLinks}
-								/>
-							</div>
-						</div>
-
-						{/* Navigation buttons */}
-						<div className='flex justify-between items-center pt-4 border-t-2 border-black'>
-							<Button
-								variant='secondary'
-								onClick={handleCarouselPrev}
-								disabled={carouselIndex === 0}
-								className='px-3 py-2'
-							>
-								← Anterior
-							</Button>
-
-							<Button onClick={handleCarouselSave} variant='primary'>
-								Guardar i Seguir
-							</Button>
-
-							<Button
-								variant='secondary'
-								onClick={handleCarouselNext}
-								disabled={carouselIndex === carouselTweets.length - 1}
-								className='px-3 py-2'
-							>
-								Següent →
-							</Button>
-						</div>
-					</div>
-				</Modal>
-			)}
-
-			{/* Trial Countdown Widget */}
-			<TrialCountdown />
+			{/* Carousel Modal for editing tweets one by one - REMOVED */}
 
 			{/* Scroll to Top Button */}
 			<ScrollToTop />
