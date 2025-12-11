@@ -18,6 +18,7 @@ import {
 import type { Bookmark, Category, TweetRaw, LogEntry } from './types'
 import { processBookmarksWithGemini } from './services/geminiService'
 import { storage } from './services/storage'
+import { TrialCountdown } from './components/TrialCountdown'
 import { Button, Input, Label, TextArea, Badge, Modal } from './components/UI'
 import { ScrollToTop } from './components/ScrollToTop'
 import { strings } from './translations'
@@ -40,7 +41,7 @@ const BookmarkCard: React.FC<{
 			<div className='flex justify-between items-start mb-2'>
 				<div className='flex flex-wrap gap-1.5'>
 					{bookmark.categories.map((cat, idx) => (
-						<Badge key={idx} color='bg-cyan-300'>
+						<Badge key={idx} color='bg-orange-200'>
 							{cat}
 						</Badge>
 					))}
@@ -435,8 +436,8 @@ export default function App() {
 					description: description || strings.defaults.noDescription,
 					author: author,
 					categories: p.categories && p.categories.length > 0
-				? p.categories.filter(cat => categories.includes(cat))
-				: [strings.defaults.uncategorized],
+						? p.categories.filter(cat => categories.includes(cat))
+						: [strings.defaults.uncategorized],
 					externalLinks: p.externalLinks || [],
 					originalLink: `https://twitter.com/i/web/status/${p.originalId}`,
 					createdAt: createdAt,
@@ -500,14 +501,14 @@ export default function App() {
 					let addedCount = 0
 					let skippedCount = 0
 
-					;(rawData.bookmarks as Bookmark[]).forEach((b) => {
-						if (bookmarkMap.has(b.id)) {
-							skippedCount++
-						} else {
-							bookmarkMap.set(b.id, b)
-							addedCount++
-						}
-					})
+						; (rawData.bookmarks as Bookmark[]).forEach((b) => {
+							if (bookmarkMap.has(b.id)) {
+								skippedCount++
+							} else {
+								bookmarkMap.set(b.id, b)
+								addedCount++
+							}
+						})
 
 					const newBookmarks = Array.from(bookmarkMap.values())
 					setBookmarks(newBookmarks)
@@ -842,10 +843,12 @@ export default function App() {
 				setBookmarks((prev) => {
 					const nextBooks = prev.map((b) =>
 						b.categories.includes(cat)
-						? { ...b, categories: b.categories.filter(c => c !== cat).length > 0
-							? b.categories.filter(c => c !== cat)
-							: [strings.defaults.uncategorized] }
-						: b
+							? {
+								...b, categories: b.categories.filter(c => c !== cat).length > 0
+									? b.categories.filter(c => c !== cat)
+									: [strings.defaults.uncategorized]
+							}
+							: b
 					)
 					return nextBooks
 				})
@@ -987,9 +990,8 @@ export default function App() {
 								disabled={isLoading}
 							/>
 							<div
-								className={`font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-green-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
-									isLoading ? 'cursor-not-allowed opacity-50' : ''
-								}`}
+								className={`font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-green-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${isLoading ? 'cursor-not-allowed opacity-50' : ''
+									}`}
 							>
 								<Upload size={18} /> {strings.app.importJson}
 							</div>
@@ -1246,15 +1248,14 @@ export default function App() {
 						{logs.map((log, i) => (
 							<div
 								key={i}
-								className={`flex gap-2 ${
-									log.type === 'error'
+								className={`flex gap-2 ${log.type === 'error'
 										? 'text-red-500'
 										: log.type === 'success'
-										? 'text-green-400'
-										: log.type === 'warning'
-										? 'text-yellow-400'
-										: 'text-gray-300'
-								}`}
+											? 'text-green-400'
+											: log.type === 'warning'
+												? 'text-yellow-400'
+												: 'text-gray-300'
+									}`}
 							>
 								<span className='opacity-50'>[{log.timestamp}]</span>
 								<span>{log.message}</span>
@@ -1414,6 +1415,7 @@ export default function App() {
 								{strings.modal.btnCancel}
 							</Button>
 							<Button onClick={saveBookmark}>
+								{strings.modal.btnSave}
 							</Button>
 						</div>
 					</div>
@@ -1449,13 +1451,11 @@ export default function App() {
 							onDragOver={(e) => handleCategoryDragOver(e, index)}
 							onDrop={(e) => handleCategoryDrop(e, index)}
 							onDragEnd={handleCategoryDragEnd}
-							className={`flex justify-between items-center bg-gray-50 p-3 border-2 border-black cursor-move transition-all ${
-								draggedCategoryIndex === index ? 'opacity-50 scale-95' : ''
-							} ${
-								dragOverCategoryIndex === index && draggedCategoryIndex !== index
+							className={`flex justify-between items-center bg-gray-50 p-3 border-2 border-black cursor-move transition-all ${draggedCategoryIndex === index ? 'opacity-50 scale-95' : ''
+								} ${dragOverCategoryIndex === index && draggedCategoryIndex !== index
 									? 'border-blue-500 bg-blue-50'
 									: ''
-							}`}
+								}`}
 						>
 							<div className='flex items-center gap-3'>
 								<span className='text-gray-400 select-none'>☰</span>
@@ -1534,6 +1534,9 @@ export default function App() {
 			{/* Review Rejected Tweets Modal - REMOVED for Universal Bookmarks */}
 
 			{/* Carousel Modal for editing tweets one by one - REMOVED */}
+
+			{/* Trial Countdown Widget */}
+			<TrialCountdown />
 
 			{/* Scroll to Top Button */}
 			<ScrollToTop />
