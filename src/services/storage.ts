@@ -2,9 +2,9 @@ import type { Bookmark, Category } from '../types';
 import { strings } from '../translations';
 
 const KEYS = {
-  BOOKMARKS: 'ai-bookmarks-data',
-  CATEGORIES: 'ai-bookmarks-categories',
-  DELETED_IDS: 'ai-bookmarks-deleted-ids'
+  BOOKMARKS: 'universal-bookmarks-data',
+  CATEGORIES: 'universal-bookmarks-categories',
+  DELETED_IDS: 'universal-bookmarks-deleted-ids'
 };
 
 const API_URL = import.meta.env.VITE_STORAGE_API_URL;
