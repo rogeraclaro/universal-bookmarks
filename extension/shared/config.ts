@@ -1,10 +1,10 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'https://ailinksdb.masellas.info/api',
-  SECRET: 'aAgYYud97Kp29Lif9u0i',
+  BASE_URL: 'https://links.masellas.info/api',
+  SECRET: '4eb6fd03128af657e3b37c1467d00823',
   HEADERS: {
     'Content-Type': 'application/json',
-    'x-api-secret': 'aAgYYud97Kp29Lif9u0i'
+    'x-api-secret': '4eb6fd03128af657e3b37c1467d00823'
   }
 };
 
@@ -20,7 +20,7 @@ export const ERRORS = {
 
 // UI strings in Catalan
 export const UI_STRINGS = {
-  TITLE: "AI Bookmark Manager",
+  TITLE: "Universal Bookmark Manager",
   LOADING: "Carregant informació...",
   SAVE: "Afegir Bookmark",
   CANCEL: "Cancel·lar",

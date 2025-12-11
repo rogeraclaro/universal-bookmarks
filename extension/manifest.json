@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "AI Bookmark Manager",
-  "description": "Guarda pàgines web a la teva col·lecció d'AI Bookmarks",
+  "name": "Universal Bookmark Manager",
+  "description": "Guarda pàgines web a la teva col·lecció d'Universal Bookmarks",
   "version": "1.0.0",
   "action": {
     "default_popup": "popup/index.html",
@@ -22,7 +22,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://ailinksdb.masellas.info/*"
+    "https://links.masellas.info/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",
