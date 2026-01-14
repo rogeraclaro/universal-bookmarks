@@ -20,7 +20,7 @@ export interface ExtractedMetadata {
 
 // Message types for Chrome messaging
 export interface Message {
-  type: 'GET_METADATA' | 'SAVE_BOOKMARK' | 'CHECK_DUPLICATE' | 'GET_CATEGORIES';
+  type: 'GET_METADATA' | 'SAVE_BOOKMARK' | 'CHECK_DUPLICATE' | 'GET_CATEGORIES' | 'SAVE_CATEGORY';
   data?: any;
 }
 

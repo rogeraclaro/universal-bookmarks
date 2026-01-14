@@ -1,4 +1,4 @@
-import { getCategories, saveBookmark, isDuplicate } from '../shared/api';
+import { getCategories, saveBookmark, isDuplicate, saveCategory } from '../shared/api';
 import type { Bookmark, Message } from '../shared/types';
 
 // Cache categories to reduce API calls
@@ -49,6 +49,22 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
         // Clear cache so next load gets fresh data
         categoriesCache = null;
         sendResponse({ success: true });
+      })
+      .catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async
+  }
+
+  if (message.type === 'SAVE_CATEGORY') {
+    // Save new category to API
+    const newCategory: string = message.data.category;
+    saveCategory(newCategory)
+      .then((allCategories) => {
+        // Update cache with new categories
+        categoriesCache = allCategories;
+        cacheTimestamp = Date.now();
+        sendResponse({ success: true, data: allCategories });
       })
       .catch(error => {
         sendResponse({ success: false, error: error.message });

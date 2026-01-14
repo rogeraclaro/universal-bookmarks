@@ -33,5 +33,7 @@ export const UI_STRINGS = {
   LABEL_CATEGORIES: "Categories:",
   SUCCESS: "Bookmark afegit correctament!",
   DUPLICATE_WARNING: "Aquest enllaç ja existeix!",
-  DUPLICATE_MESSAGE: "Aquesta pàgina ja està guardada a la teva col·lecció."
+  DUPLICATE_MESSAGE: "Aquesta pàgina ja està guardada a la teva col·lecció.",
+  NEW_CATEGORY_PLACEHOLDER: "Nova categoria...",
+  ADD_CATEGORY: "Afegir"
 };
