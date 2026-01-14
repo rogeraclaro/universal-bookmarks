@@ -73,3 +73,27 @@ export async function isDuplicate(url: string): Promise<boolean> {
     return false;
   }
 }
+
+// POST new category (appends to existing categories)
+export async function saveCategory(newCategory: string): Promise<string[]> {
+  try {
+    // First, get all existing categories
+    const existingCategories = await getCategories();
+
+    // Check if category already exists (case-insensitive)
+    if (existingCategories.some(c => c.toLowerCase() === newCategory.toLowerCase())) {
+      return existingCategories;
+    }
+
+    // Add new category to the array
+    const allCategories = [...existingCategories, newCategory];
+
+    // POST the complete array (backend replaces entire file)
+    await apiRequest<APISaveResponse>('categories', 'POST', { data: allCategories });
+
+    return allCategories;
+  } catch (error) {
+    console.error('Error saving category:', error);
+    throw error;
+  }
+}
