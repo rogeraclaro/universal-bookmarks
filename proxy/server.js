@@ -3,7 +3,7 @@ import cors from 'cors';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
-const DEFAULT_PORT = 3838;
+const DEFAULT_PORT = 3839;
 
 // Strip Claude Code session env vars — prevents "already inside claude" errors
 // Accepts explicit input object for testability (tests pass controlled env)

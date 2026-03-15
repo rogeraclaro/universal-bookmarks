@@ -27,7 +27,7 @@ export const processBookmarksWithClaude = async (
   onLog: (message: string, type: 'info' | 'success' | 'warning' | 'error') => void,
   signal?: AbortSignal
 ): Promise<ProcessedTweetResult[]> => {
-  const proxyUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLAUDE_PROXY_URL) || 'http://localhost:3838';
+  const proxyUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLAUDE_PROXY_URL) || 'http://localhost:3839';
   const results: ProcessedTweetResult[] = [];
   const validTweets = rawTweets.filter(t => (t.full_text || t.text));
 
