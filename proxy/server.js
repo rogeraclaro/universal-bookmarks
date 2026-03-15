@@ -104,9 +104,12 @@ export function createApp({ claudeBin = 'claude', claudeTimeout = 90000, port = 
   app.use(express.json());
 
   app.post('/categorize', async (req, res) => {
-    const { url, title, description } = req.body;
+    const { url, title, description, categories: availableCategories } = req.body;
     // "Categorize this bookmark" must appear in prompt — mock-claude.sh detects it
-    const prompt = `Categorize this bookmark and return categories in Catalan.\nURL: ${url}\nTitle: ${title}\nDescription: ${description || ''}`;
+    const categoriesSection = availableCategories && availableCategories.length > 0
+      ? `\nAvailable categories (pick the most specific match from this list, use "Altres" only as last resort):\n${availableCategories.map(c => `- ${c}`).join('\n')}`
+      : '';
+    const prompt = `Categorize this bookmark and return categories in Catalan.${categoriesSection}\nURL: ${url}\nTitle: ${title}\nDescription: ${description || ''}`;
 
     try {
       const result = await callClaude(claudeBin, prompt, categorizeSchema, claudeTimeout);
