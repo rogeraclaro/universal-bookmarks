@@ -75,7 +75,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 04-01: Remove geminiService.ts, uninstall @google/genai, scrub all Gemini references (strings, env vars, imports)
+- [ ] 04-01-PLAN.md — Delete geminiService.ts and TrialCountdown.tsx, uninstall @google/genai, scrub stale Gemini strings in types.ts, translations.ts, and claudeService.ts
 
 ## Progress
 
