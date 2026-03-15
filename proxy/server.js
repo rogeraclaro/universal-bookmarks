@@ -118,7 +118,10 @@ export function createApp({ claudeBin = 'claude', claudeTimeout = 90000, port = 
   });
 
   app.post('/process-tweet', async (req, res) => {
-    const { tweet, categories } = req.body;
+    const { tweet, categories } = req.body || {};
+    if (!tweet) {
+      return res.status(400).json({ error: 'Missing tweet in request body' });
+    }
     const sanitized = sanitizeText(tweet.text || '');
     const categoriesStr = (categories || []).join(', ');
     const prompt = `Process this tweet in Catalan. Assign categories from: ${categoriesStr}.\nID: ${tweet.id}\nText: ${sanitized}\nExternal URLs: ${(tweet.urls || []).join(', ')}`;
