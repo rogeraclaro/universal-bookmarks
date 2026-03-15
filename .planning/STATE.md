@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 1 of 4 (Claude Proxy)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-03-15 — Completed plan 01-01 (test scaffold)
+Last activity: 2026-03-15 — Completed plan 01-02 (proxy server + LaunchAgent)
 
-Progress: [█░░░░░░░░░] 6%
+Progress: [██░░░░░░░░] 12%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 5 min
-- Total execution time: 5 min
+- Total plans completed: 2
+- Average duration: 4 min
+- Total execution time: 7 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-claude-proxy | 1 | 5 min | 5 min |
+| 01-claude-proxy | 2 | 7 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min
-- Trend: establishing baseline
+- Last 5 plans: 5 min, 2 min
+- Trend: fast execution, tests pre-written
 
 *Updated after each plan completion*
 
@@ -49,6 +49,9 @@ Recent decisions affecting current work:
 - [01-01] Dynamic import inside describe blocks: per-test failure when server.js missing (not top-level crash)
 - [01-01] createApp({claudeBin, claudeTimeout}) factory: defines Plan 02 server.js API contract
 - [01-01] getChildEnv(input) accepts explicit env object: enables hermetic test control
+- [01-02] createApp returns http.Server (not Express app): tests call server.close(), factory must .listen() and return server
+- [01-02] Fallback title uses rawText.slice(0,80) not substring+ellipsis: test asserts exact 80-char slice
+- [01-02] export default createApp() omitted at module level: would start server on import, causing port conflicts in tests
 
 ### Pending Todos
 
@@ -61,5 +64,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 01-01-PLAN.md (Wave 0 test scaffold)
+Stopped at: Completed 01-02-PLAN.md (proxy server + LaunchAgent)
 Resume file: None
