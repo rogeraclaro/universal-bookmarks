@@ -77,9 +77,12 @@ async function callClaude(claudeBin, prompt, schema, timeoutMs) {
 const categorizeSchema = {
   type: 'object',
   properties: {
-    categories: { type: 'array', items: { type: 'string' } }
+    categories: { type: 'array', items: { type: 'string' } },
+    title: { type: 'string', maxLength: 80 },
+    description: { type: 'string', maxLength: 300 }
   },
-  required: ['categories']
+  required: ['categories'],
+  additionalProperties: false
 };
 
 const tweetSchema = {
@@ -109,11 +112,24 @@ export function createApp({ claudeBin = 'claude', claudeTimeout = 90000, port = 
     const categoriesSection = availableCategories && availableCategories.length > 0
       ? `\nAvailable categories (pick the most specific match from this list, use "Altres" only as last resort):\n${availableCategories.map(c => `- ${c}`).join('\n')}`
       : '';
-    const prompt = `Categorize this bookmark and return categories in Catalan.${categoriesSection}\nURL: ${url}\nTitle: ${title}\nDescription: ${description || ''}`;
+    const prompt = `Categorize this bookmark and return categories, a clean title, and a short description — all in Catalan.${categoriesSection}
+
+URL: ${url}
+Title: ${title}
+Page content: ${description || '(not available)'}
+
+Rules:
+- categories: pick 1-2 from the list above, use "Altres" only as last resort
+- title: clean up the page title (max 80 chars), keep it in the original language if it's a proper name
+- description: 2-3 sentences summarising what the page is about, in Catalan, based on the page content`;
 
     try {
       const result = await callClaude(claudeBin, prompt, categorizeSchema, claudeTimeout);
-      res.json({ categories: result?.categories || [] });
+      res.json({
+        categories: result?.categories || [],
+        title: result?.title || '',
+        description: result?.description || '',
+      });
     } catch (err) {
       console.error('[proxy] /categorize error:', err.message);
       res.json({ categories: [], error: err.message });

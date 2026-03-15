@@ -39,6 +39,7 @@ export default function Popup() {
   // Categorization step state
   const [tabCatStatuses, setTabCatStatuses] = useState<Map<number, CatStatus>>(new Map());
   const [tabReviewCategories, setTabReviewCategories] = useState<Map<number, string[]>>(new Map());
+  const [tabReviewMeta, setTabReviewMeta] = useState<Map<number, { title: string; description: string }>>(new Map());
 
   // Load tabs on mount — restore review state if returning from a tab inspection
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function Popup() {
         tabs,
         selectedTabIds: [...selectedTabIds],
         tabReviewCategories: [...tabReviewCategories.entries()],
+        tabReviewMeta: [...tabReviewMeta.entries()],
         categories,
         savedAt: Date.now(),
       },
@@ -67,6 +69,7 @@ export default function Popup() {
           tabs: TabItem[];
           selectedTabIds: number[];
           tabReviewCategories: [number, string[]][];
+          tabReviewMeta: [number, { title: string; description: string }][];
           categories: string[];
           savedAt: number;
         };
@@ -75,6 +78,7 @@ export default function Popup() {
           setTabs(s.tabs);
           setSelectedTabIds(new Set(s.selectedTabIds));
           setTabReviewCategories(new Map(s.tabReviewCategories));
+          setTabReviewMeta(new Map(s.tabReviewMeta ?? []));
           setCategories(s.categories);
           setViewState('tabs-review');
           return;
@@ -312,6 +316,7 @@ export default function Popup() {
     setViewState('tabs-categorizing');
 
     const reviewCats = new Map<number, string[]>();
+    const reviewMeta = new Map<number, { title: string; description: string }>();
 
     for (const tab of tabsToProcess) {
       setTabCatStatuses(prev => new Map(prev).set(tab.id, 'categorizing'));
@@ -345,14 +350,20 @@ export default function Popup() {
 
         const valid = aiResult.categories.filter(c => categories.includes(c));
         reviewCats.set(tab.id, valid.length > 0 ? valid : ['Altres']);
+        reviewMeta.set(tab.id, {
+          title: aiResult.title || tab.title,
+          description: aiResult.description || '',
+        });
         setTabCatStatuses(prev => new Map(prev).set(tab.id, 'done'));
       } catch {
         reviewCats.set(tab.id, ['Altres']);
+        reviewMeta.set(tab.id, { title: tab.title, description: '' });
         setTabCatStatuses(prev => new Map(prev).set(tab.id, 'failed'));
       }
     }
 
     setTabReviewCategories(reviewCats);
+    setTabReviewMeta(reviewMeta);
     setViewState('tabs-review');
   }
 
@@ -377,11 +388,13 @@ export default function Popup() {
             : `@${tweetHandleMatch[1]}`
           : null;
 
-        // Use categories edited by user in review step
         const finalCategories = tabReviewCategories.get(tab.id) ?? ['Altres'];
+        const meta = tabReviewMeta.get(tab.id);
 
         const bookmark = {
           ...base,
+          title: meta?.title || base.title,
+          description: meta?.description || base.description,
           author: tweetAuthor || base.author,
           categories: finalCategories,
         };
