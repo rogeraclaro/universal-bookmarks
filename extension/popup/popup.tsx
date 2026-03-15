@@ -15,7 +15,8 @@ import {
   getTabSaveSummary,
 } from './tabsUtils';
 
-type ViewState = 'loading' | 'form' | 'duplicate' | 'success' | 'error' | 'tabs' | 'tabs-saving' | 'tabs-summary';
+type ViewState = 'loading' | 'form' | 'duplicate' | 'success' | 'error' | 'tabs' | 'tabs-categorizing' | 'tabs-review' | 'tabs-saving' | 'tabs-summary';
+type CatStatus = 'pending' | 'categorizing' | 'done' | 'failed';
 
 export default function Popup() {
   const [viewState, setViewState] = useState<ViewState>('loading');
@@ -35,6 +36,9 @@ export default function Popup() {
   const [tabStatuses, setTabStatuses] = useState<Map<number, TabSaveStatus>>(new Map());
   const [tabSaveResults, setTabSaveResults] = useState<Map<number, { title: string; categories: string[] }>>(new Map());
   const [showConfirm, setShowConfirm] = useState(false);
+  // Categorization step state
+  const [tabCatStatuses, setTabCatStatuses] = useState<Map<number, CatStatus>>(new Map());
+  const [tabReviewCategories, setTabReviewCategories] = useState<Map<number, string[]>>(new Map());
 
   // Load tabs on mount (tabs view is default)
   useEffect(() => {
@@ -255,32 +259,29 @@ export default function Popup() {
     setViewState('form');
   }
 
-  async function handleBulkSave(tabIdsToSave?: Set<number>) {
-    const idsToProcess = tabIdsToSave ?? selectedTabIds;
-    const tabsToProcess = tabs.filter(t => idsToProcess.has(t.id));
+  async function handleBulkCategorize() {
+    const tabsToProcess = tabs.filter(t => selectedTabIds.has(t.id));
 
-    // Initialize all as pending
-    const init = new Map<number, TabSaveStatus>(tabsToProcess.map(t => [t.id, 'pending']));
-    setTabStatuses(prev => new Map([...prev, ...init]));
-    setViewState('tabs-saving');
+    // Init categorization statuses
+    const initCat = new Map<number, CatStatus>(tabsToProcess.map(t => [t.id, 'pending']));
+    setTabCatStatuses(initCat);
+    setViewState('tabs-categorizing');
 
-    // Sequential — never Promise.all (GET-modify-POST race condition on saveBookmark)
+    const reviewCats = new Map<number, string[]>();
+
     for (const tab of tabsToProcess) {
-      setTabStatuses(prev => new Map(prev).set(tab.id, 'saving'));
+      setTabCatStatuses(prev => new Map(prev).set(tab.id, 'categorizing'));
 
       try {
-        // Extract page content from DOM for better AI categorization
         let tabDescription = '';
         try {
           const [{ result }] = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: () => {
               if (document.querySelector('[data-testid="tweetText"]')) {
-                // Twitter/X: extract tweet body
                 const el = document.querySelector('[data-testid="tweetText"]');
                 return (el as HTMLElement | null)?.innerText ?? '';
               }
-              // Generic: meta description > og:description > first heading + first paragraph
               const metaDesc = (document.querySelector('meta[name="description"]') as HTMLMetaElement | null)?.content;
               const ogDesc = (document.querySelector('meta[property="og:description"]') as HTMLMetaElement | null)?.content;
               const h1 = (document.querySelector('h1') as HTMLElement | null)?.innerText;
@@ -289,7 +290,7 @@ export default function Popup() {
             },
           });
           tabDescription = result ?? '';
-        } catch { /* tab not scriptable — fall back to title only */ }
+        } catch { /* not scriptable */ }
 
         const aiResult = await callClaudeProxy({
           url: tab.url,
@@ -298,9 +299,32 @@ export default function Popup() {
           categories,
         });
 
-        const base = buildTabBookmark(tab);
+        const valid = aiResult.categories.filter(c => categories.includes(c));
+        reviewCats.set(tab.id, valid.length > 0 ? valid : ['Altres']);
+        setTabCatStatuses(prev => new Map(prev).set(tab.id, 'done'));
+      } catch {
+        reviewCats.set(tab.id, ['Altres']);
+        setTabCatStatuses(prev => new Map(prev).set(tab.id, 'failed'));
+      }
+    }
 
-        // Extract Twitter/X author from URL + tab title pattern
+    setTabReviewCategories(reviewCats);
+    setViewState('tabs-review');
+  }
+
+  async function handleBulkSave(tabIdsToSave?: Set<number>) {
+    const idsToProcess = tabIdsToSave ?? selectedTabIds;
+    const tabsToProcess = tabs.filter(t => idsToProcess.has(t.id));
+
+    const init = new Map<number, TabSaveStatus>(tabsToProcess.map(t => [t.id, 'pending']));
+    setTabStatuses(prev => new Map([...prev, ...init]));
+    setViewState('tabs-saving');
+
+    for (const tab of tabsToProcess) {
+      setTabStatuses(prev => new Map(prev).set(tab.id, 'saving'));
+
+      try {
+        const base = buildTabBookmark(tab);
         const tweetHandleMatch = tab.url.match(/(?:twitter\.com|x\.com)\/([^/]+)\/status\//i);
         const tweetDisplayMatch = tab.title.match(/^(.+?)\s+on\s+(?:X|Twitter):/i);
         const tweetAuthor = tweetHandleMatch
@@ -309,15 +333,13 @@ export default function Popup() {
             : `@${tweetHandleMatch[1]}`
           : null;
 
-        // Reject invented categories — only keep ones that exist in our list
-        const validCategories = aiResult.categories.filter(c => categories.includes(c));
+        // Use categories edited by user in review step
+        const finalCategories = tabReviewCategories.get(tab.id) ?? ['Altres'];
 
         const bookmark = {
           ...base,
-          title: aiResult.title || base.title,
-          description: aiResult.description || base.description,
           author: tweetAuthor || base.author,
-          categories: validCategories.length > 0 ? validCategories : ['Altres'],
+          categories: finalCategories,
         };
 
         const saveResp = await chrome.runtime.sendMessage({ type: 'SAVE_BOOKMARK', data: bookmark });
@@ -331,7 +353,6 @@ export default function Popup() {
     }
 
     setViewState('tabs-summary');
-    // No auto-close — user reviews summary and closes manually
   }
 
   // Loading state
@@ -538,7 +559,7 @@ export default function Popup() {
                   {UI_STRINGS.TABS_CONFIRM_CANCEL}
                 </button>
                 <button
-                  onClick={() => { setShowConfirm(false); handleBulkSave(); }}
+                  onClick={() => { setShowConfirm(false); handleBulkCategorize(); }}
                   className="btn-primary text-sm"
                 >
                   {UI_STRINGS.TABS_CONFIRM_YES}
@@ -554,6 +575,105 @@ export default function Popup() {
               {UI_STRINGS.TABS_SAVE_BUTTON(totalSelected)}
             </button>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs categorizing — Claude assigns categories, user waits
+  if (viewState === 'tabs-categorizing') {
+    const catTabs = tabs.filter(t => selectedTabIds.has(t.id));
+    return (
+      <div className="w-[400px] flex flex-col max-h-[580px]">
+        <div className="bg-green-400 border-b-2 border-black p-3 flex-shrink-0">
+          <h1 className="text-lg font-bold uppercase">🤖 {UI_STRINGS.TABS_CATEGORIZING_HEADING}</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {catTabs.map(tab => {
+            const status = tabCatStatuses.get(tab.id) ?? 'pending';
+            const icon = status === 'categorizing'
+              ? <span className="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              : <span className={`font-bold text-sm flex-shrink-0 ${status === 'done' ? 'text-green-700' : status === 'failed' ? 'text-red-600' : 'text-gray-400'}`}>
+                  {status === 'pending' ? '○' : status === 'done' ? '✓' : '✗'}
+                </span>;
+            return (
+              <div key={tab.id} className="flex items-center gap-2 px-3 py-2 border-b border-gray-200">
+                {icon}
+                <img src={getFaviconUrl(tab.url)} width={16} height={16} alt="" className="flex-shrink-0" />
+                <p className="font-bold text-xs truncate flex-1">{tab.title}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs review — user edits AI-suggested categories before saving
+  if (viewState === 'tabs-review') {
+    const reviewTabs = tabs.filter(t => selectedTabIds.has(t.id));
+    return (
+      <div className="w-[400px] flex flex-col max-h-[580px]">
+        <div className="bg-green-400 border-b-2 border-black p-3 flex-shrink-0">
+          <h1 className="text-lg font-bold uppercase">🏷️ {UI_STRINGS.TABS_REVIEW_HEADING}</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-200">
+          {reviewTabs.map(tab => {
+            const tabCats = tabReviewCategories.get(tab.id) ?? [];
+            const available = categories.filter(c => !tabCats.includes(c));
+            return (
+              <div key={tab.id} className="px-3 py-2 space-y-1">
+                <div className="flex items-center gap-2">
+                  <img src={getFaviconUrl(tab.url)} width={14} height={14} alt="" className="flex-shrink-0" />
+                  <p className="font-bold text-xs truncate">{tab.title}</p>
+                </div>
+                <div className="flex flex-wrap gap-1 items-center">
+                  {tabCats.length === 0 && (
+                    <span className="text-xs text-gray-400 font-mono">{UI_STRINGS.TABS_REVIEW_NO_CATEGORIES}</span>
+                  )}
+                  {tabCats.map(cat => (
+                    <span key={cat} className="flex items-center gap-1 text-xs font-mono bg-green-100 border border-green-400 px-1 rounded">
+                      {cat}
+                      <button
+                        className="text-gray-500 hover:text-red-600 font-bold leading-none"
+                        onClick={() => setTabReviewCategories(prev => {
+                          const next = new Map(prev);
+                          next.set(tab.id, (next.get(tab.id) ?? []).filter(c => c !== cat));
+                          return next;
+                        })}
+                      >×</button>
+                    </span>
+                  ))}
+                  {available.length > 0 && (
+                    <select
+                      className="text-xs border border-gray-300 rounded px-1 py-0.5 bg-white"
+                      value=""
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        setTabReviewCategories(prev => {
+                          const next = new Map(prev);
+                          next.set(tab.id, [...(next.get(tab.id) ?? []), val]);
+                          return next;
+                        });
+                      }}
+                    >
+                      <option value="">{UI_STRINGS.TABS_REVIEW_ADD_PLACEHOLDER}</option>
+                      {available.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="border-t-2 border-black p-3 flex gap-2 justify-end flex-shrink-0 bg-white">
+          <button onClick={() => setViewState('tabs')} className="btn-secondary text-sm">
+            {UI_STRINGS.TABS_CONFIRM_CANCEL}
+          </button>
+          <button onClick={() => handleBulkSave()} className="btn-primary text-sm">
+            {UI_STRINGS.TABS_REVIEW_SAVE_BUTTON(reviewTabs.length)}
+          </button>
         </div>
       </div>
     );
