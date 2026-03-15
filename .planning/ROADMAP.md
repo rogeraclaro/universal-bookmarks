@@ -33,8 +33,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01: Build local proxy server (reads Claude CLI session token, exposes localhost:3838)
 - [x] 01-02: Configure LaunchAgent for auto-start on both Macs
-- [ ] 01-03: Replace geminiService.ts with claudeService.ts (same public interface)
-- [ ] 01-04: Wire web app and extension to call proxy; implement error fallback (AI-04)
+- [x] 01-03: Replace geminiService.ts with claudeService.ts (same public interface)
+- [x] 01-04: Wire web app and extension to call proxy; implement error fallback (AI-04)
 
 ### Phase 2: Chrome Tabs Feature
 **Goal**: Users can select multiple open Chrome tabs and bulk-save them as AI-categorized bookmarks from the extension popup
