@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Claude Proxy** - Build local proxy server and replace Gemini with Claude across the full stack (completed 2026-03-15)
 - [x] **Phase 2: Chrome Tabs Feature** - Add bulk tab selection and AI categorization to the extension popup (completed 2026-03-15)
 - [ ] **Phase 3: Fix Single-Save** - Wire single-page save from extension to Claude for categorization
-- [ ] **Phase 4: Tech Debt Cleanup** - Remove Gemini dead code, uninstall @google/genai, clean stale strings
+- [x] **Phase 4: Tech Debt Cleanup** - Remove Gemini dead code, uninstall @google/genai, clean stale strings (completed 2026-03-15)
 
 ## Phase Details
 
@@ -87,4 +87,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Claude Proxy | 4/4 | Complete   | 2026-03-15 |
 | 2. Chrome Tabs Feature | 3/3 | Complete   | 2026-03-15 |
 | 3. Fix Single-Save | 0/1 | Not started | - |
-| 4. Tech Debt Cleanup | 0/1 | Not started | - |
+| 4. Tech Debt Cleanup | 1/1 | Complete   | 2026-03-15 |
