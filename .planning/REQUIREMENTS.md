@@ -7,17 +7,17 @@
 
 ### Servidor Local Proxy
 
-- [ ] **PROXY-01**: El servidor local llegeix el token de sessió del Claude Code CLI (keychain / config file macOS)
-- [ ] **PROXY-02**: El servidor exposa un endpoint HTTP local (`localhost:3838`) que accepta peticions d'AI i les envia a l'Anthropic API
+- [x] **PROXY-01**: El servidor local llegeix el token de sessió del Claude Code CLI (keychain / config file macOS)
+- [x] **PROXY-02**: El servidor exposa un endpoint HTTP local (`localhost:3838`) que accepta peticions d'AI i les envia a l'Anthropic API
 - [ ] **PROXY-03**: LaunchAgent macOS configurat per auto-start al login en ambdós Macs
-- [ ] **PROXY-04**: La web app i l'extensió criden el proxy local en lloc de Gemini directament
+- [x] **PROXY-04**: La web app i l'extensió criden el proxy local en lloc de Gemini directament
 
 ### Substitució Gemini → Claude
 
 - [ ] **AI-01**: `claudeService.ts` substitueix `geminiService.ts` amb la mateixa interfície pública (`processBookmarksWithClaude`)
 - [ ] **AI-02**: El processament de tweets (categorització, títol en català, descripció, `isAI`) funciona via Claude
 - [ ] **AI-03**: La categorització de pàgines web al guardar des de l'extensió funciona via Claude
-- [ ] **AI-04**: Gestió d'errors i fallback (bookmark sense AI si el proxy no és accessible) equivalent a l'actual
+- [x] **AI-04**: Gestió d'errors i fallback (bookmark sense AI si el proxy no és accessible) equivalent a l'actual
 
 ### Feature Pestanyes Chrome
 
@@ -48,14 +48,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROXY-01 | Phase 1 | Pending |
-| PROXY-02 | Phase 1 | Pending |
+| PROXY-01 | Phase 1 | Complete (01-01) |
+| PROXY-02 | Phase 1 | Complete (01-01) |
 | PROXY-03 | Phase 1 | Pending |
-| PROXY-04 | Phase 1 | Pending |
+| PROXY-04 | Phase 1 | Complete (01-01) |
 | AI-01 | Phase 1 | Pending |
 | AI-02 | Phase 1 | Pending |
 | AI-03 | Phase 3 | Pending |
-| AI-04 | Phase 1 | Pending |
+| AI-04 | Phase 1 | Complete (01-01) |
 | TABS-01 | Phase 2 | Pending |
 | TABS-02 | Phase 2 | Pending |
 | TABS-03 | Phase 2 | Pending |
@@ -68,4 +68,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation*
+*Last updated: 2026-03-15 after plan 01-01 completion*
