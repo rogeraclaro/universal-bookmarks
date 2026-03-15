@@ -22,7 +22,8 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://links.masellas.info/*"
+    "https://links.masellas.info/*",
+    "http://localhost:3838/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

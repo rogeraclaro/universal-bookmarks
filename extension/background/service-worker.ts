@@ -1,4 +1,4 @@
-import { getCategories, saveBookmark, isDuplicate, saveCategory } from '../shared/api';
+import { getCategories, saveBookmark, isDuplicate, saveCategory, callClaudeProxy } from '../shared/api';
 import type { Bookmark, Message } from '../shared/types';
 
 // Cache categories to reduce API calls
@@ -42,17 +42,24 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
   }
 
   if (message.type === 'SAVE_BOOKMARK') {
-    // Save bookmark to API
     const bookmark: Bookmark = message.data;
-    saveBookmark(bookmark)
-      .then(() => {
-        // Clear cache so next load gets fresh data
-        categoriesCache = null;
-        sendResponse({ success: true });
-      })
-      .catch(error => {
-        sendResponse({ success: false, error: error.message });
-      });
+    // Attempt Claude categorization before saving.
+    // callClaudeProxy always resolves (never rejects) — proxy unreachable = empty categories.
+    callClaudeProxy({
+      url: bookmark.originalLink,
+      title: bookmark.title,
+      description: bookmark.description
+    }).then(({ categories }) => {
+      const enrichedBookmark: Bookmark = categories.length > 0
+        ? { ...bookmark, categories }
+        : bookmark;
+      return saveBookmark(enrichedBookmark);
+    }).then(() => {
+      categoriesCache = null;
+      sendResponse({ success: true });
+    }).catch((error: Error) => {
+      sendResponse({ success: false, error: error.message });
+    });
     return true; // Keep channel open for async
   }
 
