@@ -1,110 +1,64 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-stopped_at: Completed 04-tech-debt-cleanup plan 04-01 (Gemini dead code cleanup)
-last_updated: "2026-03-15T15:45:23.400Z"
-last_activity: 2026-03-15 — Completed plan 01-04 (Chrome extension proxy integration, human verification approved)
+milestone: v1.1
+milestone_name: (per planificar)
+status: milestone_complete
+stopped_at: v1.0 MVP archived — ready for next milestone planning
+last_updated: "2026-03-15T00:00:00.000Z"
+last_activity: 2026-03-15 — Archived v1.0 milestone (4 phases, 9 plans)
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-15)
+See: .planning/PROJECT.md (updated 2026-03-15 after v1.0 milestone)
 
-**Core value:** User can capture any web content and find it later organized by category, without manual management.
-**Current focus:** Phase 1 — Claude Proxy
+**Core value:** L'usuari pot capturar qualsevol contingut web i trobar-lo més tard organitzat per categories, sense gestió manual.
+**Current focus:** Planning next milestone (v1.1)
 
 ## Current Position
 
-Phase: 1 of 4 (Claude Proxy) — COMPLETE
-Plan: 4 of 4 in current phase — COMPLETE
-Status: Phase 1 complete, ready for Phase 2
-Last activity: 2026-03-15 — Completed plan 01-04 (Chrome extension proxy integration, human verification approved)
+Milestone v1.0 MVP — SHIPPED 2026-03-15
 
-Progress: [██████████] 100%
+All 4 phases complete. Ready to plan next milestone.
+
+Progress: [██████████] 100% (v1.0 complete)
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 4
-- Average duration: ~8 min
-- Total execution time: ~30 min
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01-claude-proxy | 4 | ~30 min | ~8 min |
-
-**Recent Trend:**
-- Last 5 plans: 5 min, 2 min, 8 min, 15 min
-- Trend: fast execution
-
-*Updated after each plan completion*
-| Phase 01-claude-proxy P04 | 5 | 2 tasks | 4 files |
-| Phase 01-claude-proxy P04 | 15 | 3 tasks | 5 files |
-| Phase 02-chrome-tabs-feature P01 | 2 | 2 tasks | 8 files |
-| Phase 02-chrome-tabs-feature P02 | 4 | 2 tasks | 3 files |
-| Phase 02-chrome-tabs-feature P03 | 3 | 2 tasks | 3 files |
-| Phase 02-chrome-tabs-feature P03 | 45 | 3 tasks | 5 files |
-| Phase 03-fix-single-save P01 | 15 | 2 tasks | 1 files |
-| Phase 04-tech-debt-cleanup P01 | 8 | 2 tasks | 10 files |
+**v1.0 Summary:**
+- Total plans completed: 9
+- Total execution time: ~1 dia (2026-03-15)
+- Average duration: ~15 min/plan
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Key decisions archived to `.planning/milestones/v1.0-ROADMAP.md` and `PROJECT.md`.
 
-- Use `spawn` (not `execFile`) for claude CLI in proxy — execFile hangs indefinitely
-- Call `callClaudeProxy` in popup (not service worker) to avoid double-call; SAVE_BOOKMARK receives already-categorized bookmark
-- Sequential `for..of` for bulk save — prevents GET-modify-POST race condition on shared JSON storage
-- 3-tier fallback for single-save: Claude → user selection → "Altres"
-- [01-01] Dynamic import inside describe blocks: per-test failure when server.js missing (not top-level crash)
-- [01-01] createApp({claudeBin, claudeTimeout}) factory: defines Plan 02 server.js API contract
-- [01-01] getChildEnv(input) accepts explicit env object: enables hermetic test control
-- [01-02] createApp returns http.Server (not Express app): tests call server.close(), factory must .listen() and return server
-- [01-02] Fallback title uses rawText.slice(0,80) not substring+ellipsis: test asserts exact 80-char slice
-- [01-02] export default createApp() omitted at module level: would start server on import, causing port conflicts in tests
-- [Phase 01-03]: vite.config.ts test.include scoped to src/**/*.test.ts to prevent vitest picking up proxy/test/proxy.test.mjs (node:test format)
-- [Phase 01-03]: claudeService fallback bookmark omits isAI field — matches actual ProcessedTweetResult in types.ts (plan interface had isAI but types.ts does not)
-- [Phase 01-claude-proxy]: Wired callClaudeProxy in service-worker SAVE_BOOKMARK handler per plan — enriches bookmark with categories before persisting
-- [Phase 01-claude-proxy]: Port corrected from 3838 to 3839 — conflict with existing aibookmarks service on development Mac
-- [Phase 01-claude-proxy]: Null guard added to /process-tweet — crash on missing tweet body prevented with 400 early return
-- [Phase 02-chrome-tabs-feature]: vitest.config.ts in extension/ is separate from root vite.config.ts — prevents conflict with webapp test setup
-- [Phase 02-chrome-tabs-feature]: SAVE_CATEGORY renamed to ADD_CATEGORY in Message type union — service-worker.ts updated in Plan 03
-- [Phase 02-chrome-tabs-feature]: Trim popup.tsx imports to only Plan 02 subset (noUnusedLocals:true) — buildTabBookmark/getTabSaveSummary/resolveAuthorFromUrl deferred to Plan 03
-- [Phase 02-chrome-tabs-feature]: Rule 3 auto-fix: SAVE_CATEGORY -> ADD_CATEGORY in service-worker.ts and popup.tsx — pulled forward from Plan 03 because it blocked the build
-- [Phase 02-chrome-tabs-feature]: callClaudeProxy timeout raised to 30s — tweets need more processing time
-- [Phase 02-chrome-tabs-feature]: Service-worker SAVE_BOOKMARK simplified: popup sends pre-categorized bookmarks, no double Claude call
-- [Phase 02-chrome-tabs-feature]: AI category validation in popup: only accept categories from known user list, fallback to Altres
-- [Phase 02-chrome-tabs-feature]: Claude /categorize prompt now includes available categories list — Claude picks specific match, Altres only as last resort
-- [Phase 02-chrome-tabs-feature]: Green-400 (rgb 74 222 128) established as popup primary accent color — replaces yellow-400 inherited from ai-bookmarks
-- [Phase 03-fix-single-save]: Pass local resolvedCats variable (not React state) to callClaudeProxy in loadData — state batch updates may not have applied yet
-- [Phase 03-fix-single-save]: Duplicate check runs in parallel with categories fetch (Promise.all) then Claude called sequentially — reduces load time and skips Claude for already-saved URLs
-- [Phase 04-tech-debt-cleanup]: App.tsx historical comment ('Claude proxy replaces Gemini') preserved — explicitly exempted by plan
-- [Phase 04-tech-debt-cleanup]: src/vite.config.ts GEMINI_API_KEY define block removed — stale config referencing deleted Gemini service
+Active tech debt for next milestone:
+- Port 3839 vs spec 3838 — canviar si es vol alinear amb spec
+- Camp `isAI` dead field — consumir (UI badge) o eliminar del proxy/types
 
 ### Pending Todos
 
-None yet.
+- Decidir scope v1.1 (port cleanup, isAI field, proxy status indicator)
+- Run `/gsd:new-milestone` per iniciar el nou cicle
 
 ### Blockers/Concerns
 
-None yet.
+Cap.
 
 ## Session Continuity
 
-Last session: 2026-03-15T15:39:04.522Z
-Stopped at: Completed 04-tech-debt-cleanup plan 04-01 (Gemini dead code cleanup)
+Last session: 2026-03-15
+Stopped at: v1.0 milestone archived
 Resume file: None
