@@ -169,8 +169,16 @@ export default function Popup() {
       setTitle(extractedMetadata.title);
       setDescription(extractedMetadata.description);
 
-      // Get categories from background
-      const categoriesResponse = await chrome.runtime.sendMessage({ type: 'GET_CATEGORIES' });
+      // Check duplicate + fetch categories in parallel (both are fast API calls)
+      const [duplicateResponse, categoriesResponse] = await Promise.all([
+        chrome.runtime.sendMessage({ type: 'CHECK_DUPLICATE', data: { url: extractedMetadata.url } }),
+        chrome.runtime.sendMessage({ type: 'GET_CATEGORIES' }),
+      ]);
+
+      if (duplicateResponse.success && duplicateResponse.data.isDuplicate) {
+        setViewState('duplicate');
+        return;
+      }
 
       const resolvedCats: string[] = categoriesResponse.success ? categoriesResponse.data : ['Altres'];
       setCategories(resolvedCats);
