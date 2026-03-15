@@ -19,7 +19,10 @@
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "tabs",
+    "tabGroups",
+    "favicon"
   ],
   "host_permissions": [
     "https://links.masellas.info/*",
