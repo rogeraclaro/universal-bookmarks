@@ -13,7 +13,7 @@ Port of ai-bookmarks v1.0 (shipped 2026-03-14). Replace Gemini with Claude via a
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Claude Proxy** - Build local proxy server and replace Gemini with Claude across the full stack (completed 2026-03-15)
-- [ ] **Phase 2: Chrome Tabs Feature** - Add bulk tab selection and AI categorization to the extension popup
+- [x] **Phase 2: Chrome Tabs Feature** - Add bulk tab selection and AI categorization to the extension popup (completed 2026-03-15)
 - [ ] **Phase 3: Fix Single-Save** - Wire single-page save from extension to Claude for categorization
 - [ ] **Phase 4: Tech Debt Cleanup** - Remove Gemini dead code, uninstall @google/genai, clean stale strings
 
@@ -85,6 +85,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Claude Proxy | 4/4 | Complete   | 2026-03-15 |
-| 2. Chrome Tabs Feature | 2/3 | In Progress|  |
+| 2. Chrome Tabs Feature | 3/3 | Complete   | 2026-03-15 |
 | 3. Fix Single-Save | 0/1 | Not started | - |
 | 4. Tech Debt Cleanup | 0/1 | Not started | - |

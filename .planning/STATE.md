@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 02-chrome-tabs-feature-02-PLAN.md
-last_updated: "2026-03-15T10:21:47.553Z"
+stopped_at: Checkpoint 02-03 Task 3 — awaiting human verification of Chrome Tabs Feature
+last_updated: "2026-03-15T10:26:01.455Z"
 last_activity: 2026-03-15 — Completed plan 01-04 (Chrome extension proxy integration, human verification approved)
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 100
 ---
 
@@ -54,6 +54,7 @@ Progress: [██████████] 100%
 | Phase 01-claude-proxy P04 | 15 | 3 tasks | 5 files |
 | Phase 02-chrome-tabs-feature P01 | 2 | 2 tasks | 8 files |
 | Phase 02-chrome-tabs-feature P02 | 4 | 2 tasks | 3 files |
+| Phase 02-chrome-tabs-feature P03 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase 02-chrome-tabs-feature]: SAVE_CATEGORY renamed to ADD_CATEGORY in Message type union — service-worker.ts updated in Plan 03
 - [Phase 02-chrome-tabs-feature]: Trim popup.tsx imports to only Plan 02 subset (noUnusedLocals:true) — buildTabBookmark/getTabSaveSummary/resolveAuthorFromUrl deferred to Plan 03
 - [Phase 02-chrome-tabs-feature]: Rule 3 auto-fix: SAVE_CATEGORY -> ADD_CATEGORY in service-worker.ts and popup.tsx — pulled forward from Plan 03 because it blocked the build
+- [Phase 02-chrome-tabs-feature]: callClaudeProxy timeout raised to 30s — tweets need more processing time
+- [Phase 02-chrome-tabs-feature]: Service-worker SAVE_BOOKMARK simplified: popup sends pre-categorized bookmarks, no double Claude call
+- [Phase 02-chrome-tabs-feature]: AI category validation in popup: only accept categories from known user list, fallback to Altres
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T10:21:47.551Z
-Stopped at: Completed 02-chrome-tabs-feature-02-PLAN.md
+Last session: 2026-03-15T10:25:51.561Z
+Stopped at: Checkpoint 02-03 Task 3 — awaiting human verification of Chrome Tabs Feature
 Resume file: None
