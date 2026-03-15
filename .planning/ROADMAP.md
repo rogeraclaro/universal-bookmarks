@@ -62,7 +62,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: Wire single-save path in popup to callClaudeProxy; implement 3-tier fallback (Claude → user selection → Altres)
+- [ ] 03-01-PLAN.md — Wire callClaudeProxy in loadData; pre-populate selectedCategories with validated AI result; 3-tier fallback
 
 ### Phase 4: Tech Debt Cleanup
 **Goal**: Gemini code, packages, and references are fully removed; the codebase contains no dead code from the migration
