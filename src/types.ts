@@ -36,6 +36,7 @@ export interface ProcessedTweetResult {
   categories: string[]; // Changed from 'category' to 'categories' array
   externalLinks: string[];
   originalId: string;
+  isAI?: boolean;
 }
 
 export interface LogEntry {
