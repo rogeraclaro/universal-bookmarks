@@ -45,37 +45,48 @@ export default function Popup() {
     restoreOrLoad();
   }, []);
 
+  // Auto-save review state to local storage whenever categories change during review
+  useEffect(() => {
+    if (viewState !== 'tabs-review' || tabReviewCategories.size === 0) return;
+    chrome.storage.local.set({
+      reviewState: {
+        tabs,
+        selectedTabIds: [...selectedTabIds],
+        tabReviewCategories: [...tabReviewCategories.entries()],
+        categories,
+        savedAt: Date.now(),
+      },
+    });
+  }, [tabReviewCategories, viewState]);
+
   async function restoreOrLoad() {
     try {
-      const saved = await chrome.storage.session.get('reviewState');
+      const saved = await chrome.storage.local.get('reviewState');
       if (saved.reviewState) {
         const s = saved.reviewState as {
           tabs: TabItem[];
           selectedTabIds: number[];
           tabReviewCategories: [number, string[]][];
           categories: string[];
+          savedAt: number;
         };
-        await chrome.storage.session.remove('reviewState');
-        setTabs(s.tabs);
-        setSelectedTabIds(new Set(s.selectedTabIds));
-        setTabReviewCategories(new Map(s.tabReviewCategories));
-        setCategories(s.categories);
-        setViewState('tabs-review');
-        return;
+        // Discard if older than 2 hours
+        if (Date.now() - s.savedAt < 7200000) {
+          setTabs(s.tabs);
+          setSelectedTabIds(new Set(s.selectedTabIds));
+          setTabReviewCategories(new Map(s.tabReviewCategories));
+          setCategories(s.categories);
+          setViewState('tabs-review');
+          return;
+        }
+        await chrome.storage.local.remove('reviewState');
       }
     } catch { /* ignore — fall through to normal load */ }
     loadTabsData();
   }
 
-  function saveReviewState() {
-    return chrome.storage.session.set({
-      reviewState: {
-        tabs,
-        selectedTabIds: [...selectedTabIds],
-        tabReviewCategories: [...tabReviewCategories.entries()],
-        categories,
-      },
-    });
+  async function clearReviewState() {
+    await chrome.storage.local.remove('reviewState');
   }
 
   async function loadTabsData() {
@@ -662,8 +673,7 @@ export default function Popup() {
                   <button
                     title={UI_STRINGS.TABS_REVIEW_OPEN_TAB}
                     className="text-xs text-gray-400 hover:text-black flex-shrink-0 leading-none"
-                    onClick={async () => {
-                      await saveReviewState();
+                    onClick={() => {
                       chrome.tabs.update(tab.id, { active: true });
                     }}
                   >↗</button>
@@ -709,10 +719,10 @@ export default function Popup() {
           })}
         </div>
         <div className="border-t-2 border-black p-3 flex gap-2 justify-end flex-shrink-0 bg-white">
-          <button onClick={() => setViewState('tabs')} className="btn-secondary text-sm">
+          <button onClick={() => { clearReviewState(); setViewState('tabs'); }} className="btn-secondary text-sm">
             {UI_STRINGS.TABS_CONFIRM_CANCEL}
           </button>
-          <button onClick={() => handleBulkSave()} className="btn-primary text-sm">
+          <button onClick={() => { clearReviewState(); handleBulkSave(); }} className="btn-primary text-sm">
             {UI_STRINGS.TABS_REVIEW_SAVE_BUTTON(reviewTabs.length)}
           </button>
         </div>
