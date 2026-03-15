@@ -156,7 +156,7 @@ export default function Popup() {
 
     try {
       const response = await chrome.runtime.sendMessage({
-        type: 'SAVE_CATEGORY',
+        type: 'ADD_CATEGORY',
         data: { category: trimmedCategory }
       });
 
