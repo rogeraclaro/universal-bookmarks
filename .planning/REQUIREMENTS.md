@@ -16,7 +16,7 @@
 
 - [x] **AI-01**: `claudeService.ts` substitueix `geminiService.ts` amb la mateixa interfície pública (`processBookmarksWithClaude`)
 - [x] **AI-02**: El processament de tweets (categorització, títol en català, descripció, `isAI`) funciona via Claude
-- [ ] **AI-03**: La categorització de pàgines web al guardar des de l'extensió funciona via Claude
+- [x] **AI-03**: La categorització de pàgines web al guardar des de l'extensió funciona via Claude
 - [x] **AI-04**: Gestió d'errors i fallback (bookmark sense AI si el proxy no és accessible) equivalent a l'actual
 
 ### Feature Pestanyes Chrome
@@ -54,7 +54,7 @@
 | PROXY-04 | Phase 1 | Complete (01-01) |
 | AI-01 | Phase 1 | Complete |
 | AI-02 | Phase 1 | Complete |
-| AI-03 | Phase 3 | Pending |
+| AI-03 | Phase 3 | Complete |
 | AI-04 | Phase 1 | Complete (01-01) |
 | TABS-01 | Phase 2 | Pending |
 | TABS-02 | Phase 2 | Pending |
