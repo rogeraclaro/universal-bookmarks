@@ -29,7 +29,7 @@ export interface Bookmark {
 
 export type Category = string;
 
-// Gemini Service Types
+// AI Service Types
 export interface ProcessedTweetResult {
   title: string;
   // description removed as we use raw text

@@ -7,7 +7,7 @@ const TIMEOUT_MS = 90000;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Port from geminiService.ts — identical sanitization logic
+// Sanitization logic (migrated from legacy AI service)
 const sanitizeText = (text: string): string => {
   return text
     .replace(/#\w+/g, '')          // Remove hashtags

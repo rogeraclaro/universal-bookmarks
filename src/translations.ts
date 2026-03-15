@@ -30,7 +30,7 @@ export const strings = {
     error: "❌ Error processant el paquet: {0}",
     finished: "Procés finalitzat.",
     stopped: "Procés aturat per l'usuari.",
-    analyzing: "Analitzant contingut amb Gemini...",
+    analyzing: "Analitzant contingut amb Claude...",
     cooldown: "⏳ Pausa de seguretat entre peticions..."
   },
   modal: {
