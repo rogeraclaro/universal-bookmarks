@@ -21,10 +21,10 @@
 
 ### Feature Pestanyes Chrome
 
-- [ ] **TABS-01**: Nou botó o secció al popup de l'extensió per accedir a les tabs obertes
-- [ ] **TABS-02**: L'usuari pot filtrar tabs per grup de Chrome o veure només les tabs sense grup
-- [ ] **TABS-03**: L'usuari pot seleccionar múltiples tabs de la llista
-- [ ] **TABS-04**: Claude categoritza cada tab seleccionada i les guarda totes com a bookmarks (bulk)
+- [x] **TABS-01**: Nou botó o secció al popup de l'extensió per accedir a les tabs obertes
+- [x] **TABS-02**: L'usuari pot filtrar tabs per grup de Chrome o veure només les tabs sense grup
+- [x] **TABS-03**: L'usuari pot seleccionar múltiples tabs de la llista
+- [x] **TABS-04**: Claude categoritza cada tab seleccionada i les guarda totes com a bookmarks (bulk)
 
 ## v2 Requirements
 
@@ -56,10 +56,10 @@
 | AI-02 | Phase 1 | Complete |
 | AI-03 | Phase 3 | Complete |
 | AI-04 | Phase 1 | Complete (01-01) |
-| TABS-01 | Phase 2 | Pending |
-| TABS-02 | Phase 2 | Pending |
-| TABS-03 | Phase 2 | Pending |
-| TABS-04 | Phase 2 | Pending |
+| TABS-01 | Phase 2 | Complete |
+| TABS-02 | Phase 2 | Complete |
+| TABS-03 | Phase 2 | Complete |
+| TABS-04 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 12 total
