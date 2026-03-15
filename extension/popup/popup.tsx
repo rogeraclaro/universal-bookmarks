@@ -40,10 +40,43 @@ export default function Popup() {
   const [tabCatStatuses, setTabCatStatuses] = useState<Map<number, CatStatus>>(new Map());
   const [tabReviewCategories, setTabReviewCategories] = useState<Map<number, string[]>>(new Map());
 
-  // Load tabs on mount (tabs view is default)
+  // Load tabs on mount — restore review state if returning from a tab inspection
   useEffect(() => {
-    loadTabsData();
+    restoreOrLoad();
   }, []);
+
+  async function restoreOrLoad() {
+    try {
+      const saved = await chrome.storage.session.get('reviewState');
+      if (saved.reviewState) {
+        const s = saved.reviewState as {
+          tabs: TabItem[];
+          selectedTabIds: number[];
+          tabReviewCategories: [number, string[]][];
+          categories: string[];
+        };
+        await chrome.storage.session.remove('reviewState');
+        setTabs(s.tabs);
+        setSelectedTabIds(new Set(s.selectedTabIds));
+        setTabReviewCategories(new Map(s.tabReviewCategories));
+        setCategories(s.categories);
+        setViewState('tabs-review');
+        return;
+      }
+    } catch { /* ignore — fall through to normal load */ }
+    loadTabsData();
+  }
+
+  function saveReviewState() {
+    return chrome.storage.session.set({
+      reviewState: {
+        tabs,
+        selectedTabIds: [...selectedTabIds],
+        tabReviewCategories: [...tabReviewCategories.entries()],
+        categories,
+      },
+    });
+  }
 
   async function loadTabsData() {
     try {
@@ -625,7 +658,15 @@ export default function Popup() {
               <div key={tab.id} className="px-3 py-2 space-y-1">
                 <div className="flex items-center gap-2">
                   <img src={getFaviconUrl(tab.url)} width={14} height={14} alt="" className="flex-shrink-0" />
-                  <p className="font-bold text-xs truncate">{tab.title}</p>
+                  <p className="font-bold text-xs truncate flex-1">{tab.title}</p>
+                  <button
+                    title={UI_STRINGS.TABS_REVIEW_OPEN_TAB}
+                    className="text-xs text-gray-400 hover:text-black flex-shrink-0 leading-none"
+                    onClick={async () => {
+                      await saveReviewState();
+                      chrome.tabs.update(tab.id, { active: true });
+                    }}
+                  >↗</button>
                 </div>
                 <div className="flex flex-wrap gap-1 items-center">
                   {tabCats.length === 0 && (

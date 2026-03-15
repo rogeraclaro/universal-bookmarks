@@ -64,7 +64,8 @@ export const UI_STRINGS = {
   TABS_REVIEW_HEADING: "Revisa les categories",
   TABS_REVIEW_ADD_PLACEHOLDER: "Afegir categoria...",
   TABS_REVIEW_SAVE_BUTTON: (n: number) => `Guardar ${n} pestanyes`,
-  TABS_REVIEW_NO_CATEGORIES: "Sense categoria"
+  TABS_REVIEW_NO_CATEGORIES: "Sense categoria",
+  TABS_REVIEW_OPEN_TAB: "Obrir pestanya"
 };
 
 // Claude proxy — local server that uses claude -p CLI subprocess
