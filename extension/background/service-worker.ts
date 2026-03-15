@@ -63,7 +63,7 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
     return true; // Keep channel open for async
   }
 
-  if (message.type === 'SAVE_CATEGORY') {
+  if (message.type === 'ADD_CATEGORY') {
     // Save new category to API
     const newCategory: string = message.data.category;
     saveCategory(newCategory)
