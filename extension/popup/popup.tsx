@@ -269,21 +269,27 @@ export default function Popup() {
       setTabStatuses(prev => new Map(prev).set(tab.id, 'saving'));
 
       try {
-        // Twitter/X tabs: extract full tweet body from live DOM
+        // Extract page content from DOM for better AI categorization
         let tabDescription = '';
-        const isTweet = /(?:twitter\.com|x\.com)\/.+\/status\/\d+/i.test(tab.url);
-        if (isTweet) {
-          try {
-            const [{ result }] = await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              func: () => {
+        try {
+          const [{ result }] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              if (document.querySelector('[data-testid="tweetText"]')) {
+                // Twitter/X: extract tweet body
                 const el = document.querySelector('[data-testid="tweetText"]');
                 return (el as HTMLElement | null)?.innerText ?? '';
-              },
-            });
-            tabDescription = result ?? '';
-          } catch { /* tab not scriptable — fall back to title only */ }
-        }
+              }
+              // Generic: meta description > og:description > first heading + first paragraph
+              const metaDesc = (document.querySelector('meta[name="description"]') as HTMLMetaElement | null)?.content;
+              const ogDesc = (document.querySelector('meta[property="og:description"]') as HTMLMetaElement | null)?.content;
+              const h1 = (document.querySelector('h1') as HTMLElement | null)?.innerText;
+              const firstP = (document.querySelector('article p, main p, p') as HTMLElement | null)?.innerText;
+              return [metaDesc, ogDesc, h1, firstP].filter(Boolean).join(' ').slice(0, 500);
+            },
+          });
+          tabDescription = result ?? '';
+        } catch { /* tab not scriptable — fall back to title only */ }
 
         const aiResult = await callClaudeProxy({
           url: tab.url,
