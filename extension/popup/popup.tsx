@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ExtractedMetadata, Bookmark, TabItem, TabSaveStatus, TabGroupInfo } from '../shared/types';
 import { UI_STRINGS, ERRORS } from '../shared/config';
-import { getBookmarks, getCategories } from '../shared/api';
+import { getBookmarks, getCategories, callClaudeProxy } from '../shared/api';
 import {
   filterTabsByGroup,
   hasGroups,
@@ -11,6 +11,8 @@ import {
   getSelectionCount,
   getFaviconUrl,
   GROUP_COLOR_MAP,
+  buildTabBookmark,
+  getTabSaveSummary,
 } from './tabsUtils';
 
 type ViewState = 'loading' | 'form' | 'duplicate' | 'success' | 'error' | 'tabs' | 'tabs-saving' | 'tabs-summary';
@@ -253,11 +255,77 @@ export default function Popup() {
     setViewState('form');
   }
 
-  // Stub — bulk save logic implemented in Plan 03
-  // State setters referenced here to satisfy noUnusedLocals until Plan 03 implementation
-  async function handleBulkSave(_tabIdsToSave?: Set<number>) {
-    void tabStatuses; void setTabStatuses;
-    void tabSaveResults; void setTabSaveResults;
+  async function handleBulkSave(tabIdsToSave?: Set<number>) {
+    const idsToProcess = tabIdsToSave ?? selectedTabIds;
+    const tabsToProcess = tabs.filter(t => idsToProcess.has(t.id));
+
+    // Initialize all as pending
+    const init = new Map<number, TabSaveStatus>(tabsToProcess.map(t => [t.id, 'pending']));
+    setTabStatuses(prev => new Map([...prev, ...init]));
+    setViewState('tabs-saving');
+
+    // Sequential — never Promise.all (GET-modify-POST race condition on saveBookmark)
+    for (const tab of tabsToProcess) {
+      setTabStatuses(prev => new Map(prev).set(tab.id, 'saving'));
+
+      try {
+        // Twitter/X tabs: extract full tweet body from live DOM
+        let tabDescription = '';
+        const isTweet = /(?:twitter\.com|x\.com)\/.+\/status\/\d+/i.test(tab.url);
+        if (isTweet) {
+          try {
+            const [{ result }] = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: () => {
+                const el = document.querySelector('[data-testid="tweetText"]');
+                return (el as HTMLElement | null)?.innerText ?? '';
+              },
+            });
+            tabDescription = result ?? '';
+          } catch { /* tab not scriptable — fall back to title only */ }
+        }
+
+        const aiResult = await callClaudeProxy({
+          url: tab.url,
+          title: tab.title,
+          description: tabDescription,
+          categories,
+        });
+
+        const base = buildTabBookmark(tab);
+
+        // Extract Twitter/X author from URL + tab title pattern
+        const tweetHandleMatch = tab.url.match(/(?:twitter\.com|x\.com)\/([^/]+)\/status\//i);
+        const tweetDisplayMatch = tab.title.match(/^(.+?)\s+on\s+(?:X|Twitter):/i);
+        const tweetAuthor = tweetHandleMatch
+          ? tweetDisplayMatch
+            ? `${tweetDisplayMatch[1]} (@${tweetHandleMatch[1]})`
+            : `@${tweetHandleMatch[1]}`
+          : null;
+
+        // Reject invented categories — only keep ones that exist in our list
+        const validCategories = aiResult.categories.filter(c => categories.includes(c));
+
+        const bookmark = {
+          ...base,
+          title: aiResult.title || base.title,
+          description: aiResult.description || base.description,
+          author: tweetAuthor || base.author,
+          categories: validCategories.length > 0 ? validCategories : ['Altres'],
+        };
+
+        const saveResp = await chrome.runtime.sendMessage({ type: 'SAVE_BOOKMARK', data: bookmark });
+        if (!saveResp.success) throw new Error(saveResp.error || 'Save failed');
+
+        setTabStatuses(prev => new Map(prev).set(tab.id, 'saved'));
+        setTabSaveResults(prev => new Map(prev).set(tab.id, { title: bookmark.title, categories: bookmark.categories }));
+      } catch {
+        setTabStatuses(prev => new Map(prev).set(tab.id, 'failed'));
+      }
+    }
+
+    setViewState('tabs-summary');
+    // No auto-close — user reviews summary and closes manually
   }
 
   // Loading state
@@ -480,6 +548,106 @@ export default function Popup() {
               {UI_STRINGS.TABS_SAVE_BUTTON(totalSelected)}
             </button>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs saving — bulk save in progress
+  if (viewState === 'tabs-saving') {
+    const savingTabs = tabs.filter(t => tabStatuses.has(t.id));
+    return (
+      <div className="w-[400px] flex flex-col max-h-[580px]">
+        <div className="bg-yellow-400 border-b-2 border-black p-3 flex-shrink-0">
+          <h1 className="text-lg font-bold uppercase">⏳ {UI_STRINGS.TABS_SAVING_HEADING}</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {savingTabs.map(tab => {
+            const status = tabStatuses.get(tab.id) ?? 'pending';
+            const statusColor =
+              status === 'saved'  ? 'text-green-700' :
+              status === 'failed' ? 'text-red-600'   :
+              status === 'saving' ? 'text-blue-600'  :
+                                     'text-gray-400';
+            const statusIcon = status === 'saving'
+              ? <span className="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              : <span className={`font-bold text-sm flex-shrink-0 ${statusColor}`}>
+                  {status === 'pending' ? '○' : status === 'saved' ? '✓' : '✗'}
+                </span>;
+            return (
+              <div key={tab.id} className="flex items-center gap-2 px-3 py-2 border-b border-gray-200">
+                {statusIcon}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-xs truncate">{tab.title}</p>
+                  <p className="text-xs text-gray-500 font-mono truncate">{tab.url}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs summary — all done
+  if (viewState === 'tabs-summary') {
+    const { saved, failed } = getTabSaveSummary(tabStatuses);
+    const savedTabs = tabs.filter(t => tabStatuses.get(t.id) === 'saved');
+    const failedTabs = tabs.filter(t => tabStatuses.get(t.id) === 'failed');
+    const failedIds = new Set(failedTabs.map(t => t.id));
+
+    return (
+      <div className="w-[400px] flex flex-col max-h-[580px]">
+        <div className="bg-yellow-400 border-b-2 border-black p-3 flex-shrink-0">
+          <h1 className="text-lg font-bold uppercase">🔖 {UI_STRINGS.TABS_SUMMARY_HEADING}</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {/* Saved list with categories */}
+          {savedTabs.length > 0 && (
+            <div className="p-3 space-y-2">
+              <p className="font-bold text-xs text-green-700 uppercase">{UI_STRINGS.TABS_SUMMARY_SAVED(saved)}</p>
+              {savedTabs.map(t => {
+                const result = tabSaveResults.get(t.id);
+                return (
+                  <div key={t.id} className="border border-gray-200 rounded p-2 space-y-1">
+                    <p className="font-bold text-xs truncate">{result?.title || t.title}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(result?.categories ?? []).map(cat => (
+                        <span key={cat} className="text-xs font-mono bg-yellow-100 border border-yellow-400 px-1 rounded">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Failed list */}
+          {failedTabs.length > 0 && (
+            <div className="px-3 pb-3 space-y-1">
+              <p className="font-bold text-xs text-red-600 uppercase">{UI_STRINGS.TABS_SUMMARY_FAILED(failed)}</p>
+              {failedTabs.map(t => (
+                <p key={t.id} className="text-xs font-mono text-red-700 truncate">{t.url}</p>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="border-t-2 border-black p-3 flex gap-2 justify-end flex-shrink-0">
+          {failed > 0 && (
+            <button
+              onClick={() => handleBulkSave(failedIds)}
+              className="btn-secondary text-sm"
+            >
+              {UI_STRINGS.TABS_RETRY_FAILED(failed)}
+            </button>
+          )}
+          <button
+            onClick={() => window.close()}
+            className="btn-primary text-sm"
+          >
+            {UI_STRINGS.TABS_CLOSE}
+          </button>
         </div>
       </div>
     );
