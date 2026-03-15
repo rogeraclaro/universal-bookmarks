@@ -23,7 +23,7 @@
   ],
   "host_permissions": [
     "https://links.masellas.info/*",
-    "http://localhost:3838/*"
+    "http://localhost:3839/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",
