@@ -37,3 +37,6 @@ export const UI_STRINGS = {
   NEW_CATEGORY_PLACEHOLDER: "Nova categoria...",
   ADD_CATEGORY: "Afegir"
 };
+
+// Claude proxy — local server that uses claude -p CLI subprocess
+export const CLAUDE_PROXY_URL = 'http://localhost:3838';
