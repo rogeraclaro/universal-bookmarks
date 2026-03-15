@@ -48,9 +48,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Add tabs section UI to popup (list open tabs, per-tab checkbox)
-- [ ] 02-02: Implement group filter (filter by Chrome group / ungrouped)
-- [ ] 02-03: Implement bulk save (sequential for..of, Claude categorization per tab, inline status)
+- [ ] 02-01-PLAN.md — Types, config strings, tabsUtils pure functions, vitest setup, 3 test suites (TDD)
+- [ ] 02-02-PLAN.md — Tabs view UI: list, group filter, checkboxes, select-all, already-saved badges
+- [ ] 02-03-PLAN.md — Bulk save flow: handleBulkSave, tabs-saving/summary views, service-worker simplification
 
 ### Phase 3: Fix Single-Save
 **Goal**: Saving a single page from the extension uses Claude for categorization, at parity with bulk-save behavior
