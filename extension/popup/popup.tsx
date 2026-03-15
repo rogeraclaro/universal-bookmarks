@@ -172,11 +172,22 @@ export default function Popup() {
       // Get categories from background
       const categoriesResponse = await chrome.runtime.sendMessage({ type: 'GET_CATEGORIES' });
 
-      if (categoriesResponse.success) {
-        setCategories(categoriesResponse.data);
-      } else {
-        setCategories(['Altres']);
+      const resolvedCats: string[] = categoriesResponse.success ? categoriesResponse.data : ['Altres'];
+      setCategories(resolvedCats);
+
+      // Call Claude for AI-suggested categories (never throws — returns { categories: [] } on failure)
+      const aiResult = await callClaudeProxy({
+        url: extractedMetadata.url,
+        title: extractedMetadata.title,
+        description: extractedMetadata.description,
+        categories: resolvedCats,
+      });
+
+      const valid = aiResult.categories.filter(c => resolvedCats.includes(c));
+      if (valid.length > 0) {
+        setSelectedCategories(valid);
       }
+      // If valid is empty: leave selectedCategories as [] — user selects manually
 
       setViewState('form');
     } catch (err) {
