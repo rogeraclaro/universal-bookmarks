@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01: Build local proxy server (reads Claude CLI session token, exposes localhost:3838)
-- [ ] 01-02: Configure LaunchAgent for auto-start on both Macs
+- [x] 01-02: Configure LaunchAgent for auto-start on both Macs
 - [ ] 01-03: Replace geminiService.ts with claudeService.ts (same public interface)
 - [ ] 01-04: Wire web app and extension to call proxy; implement error fallback (AI-04)
 
@@ -84,7 +84,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Claude Proxy | 1/4 | In progress | - |
+| 1. Claude Proxy | 2/4 | In progress | - |
 | 2. Chrome Tabs Feature | 0/3 | Not started | - |
 | 3. Fix Single-Save | 0/1 | Not started | - |
 | 4. Tech Debt Cleanup | 0/1 | Not started | - |

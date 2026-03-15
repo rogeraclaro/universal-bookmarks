@@ -9,7 +9,7 @@
 
 - [x] **PROXY-01**: El servidor local llegeix el token de sessió del Claude Code CLI (keychain / config file macOS)
 - [x] **PROXY-02**: El servidor exposa un endpoint HTTP local (`localhost:3838`) que accepta peticions d'AI i les envia a l'Anthropic API
-- [ ] **PROXY-03**: LaunchAgent macOS configurat per auto-start al login en ambdós Macs
+- [x] **PROXY-03**: LaunchAgent macOS configurat per auto-start al login en ambdós Macs
 - [x] **PROXY-04**: La web app i l'extensió criden el proxy local en lloc de Gemini directament
 
 ### Substitució Gemini → Claude
@@ -50,7 +50,7 @@
 |-------------|-------|--------|
 | PROXY-01 | Phase 1 | Complete (01-01) |
 | PROXY-02 | Phase 1 | Complete (01-01) |
-| PROXY-03 | Phase 1 | Pending |
+| PROXY-03 | Phase 1 | Complete |
 | PROXY-04 | Phase 1 | Complete (01-01) |
 | AI-01 | Phase 1 | Pending |
 | AI-02 | Phase 1 | Pending |
