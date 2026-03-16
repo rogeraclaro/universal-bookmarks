@@ -25,6 +25,7 @@ export interface Bookmark {
   externalLinks: string[];
   categories: string[]; // Changed from 'category' to 'categories' array
   createdAt: number;
+  highlighted?: boolean; // Visual highlight flag
 }
 
 export type Category = string;

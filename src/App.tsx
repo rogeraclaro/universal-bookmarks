@@ -28,7 +28,8 @@ const BookmarkCard: React.FC<{
 	bookmark: Bookmark
 	onEdit: (b: Bookmark) => void
 	onDelete: (id: string, originalId: string) => void
-}> = ({ bookmark, onEdit, onDelete }) => {
+	onToggleHighlight: (id: string) => void
+}> = ({ bookmark, onEdit, onDelete, onToggleHighlight }) => {
 	// Extract original ID for blacklist purposes
 	const originalId = bookmark.originalLink.split('/').pop() || ''
 
@@ -36,7 +37,10 @@ const BookmarkCard: React.FC<{
 	const dateStr = new Date(bookmark.createdAt).toISOString().split('T')[0]
 
 	return (
-		<div className='bg-white border-2 border-black p-5 h-full flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200'>
+		<div
+			className='border-2 border-black p-5 h-full flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200'
+			style={{ backgroundColor: bookmark.highlighted ? 'rgba(74, 222, 128, 0.5)' : 'white' }} 
+		>
 			<div className='flex justify-between items-start mb-2'>
 				<div className='flex flex-wrap gap-1.5'>
 					{bookmark.categories.map((cat, idx) => (
@@ -104,14 +108,29 @@ const BookmarkCard: React.FC<{
 			</p>
 
 			<div className='mt-auto pt-4 border-t-2 border-black/10 flex flex-col gap-3'>
-				<a
-					href={bookmark.originalLink}
-					target='_blank'
-					rel='noopener noreferrer'
-					className='text-xs font-bold uppercase flex items-center gap-2 hover:bg-black hover:text-white w-fit px-2 py-1 transition-colors border border-black'
-				>
-					<Twitter size={14} /> {strings.app.viewOriginal}
-				</a>
+				<div className='flex items-center justify-between gap-2'>
+					<a
+						href={bookmark.originalLink}
+						target='_blank'
+						rel='noopener noreferrer'
+						className='text-xs font-bold uppercase flex items-center gap-2 hover:bg-black hover:text-white w-fit px-2 py-1 transition-colors border border-black'
+					>
+						<Twitter size={14} /> {strings.app.viewOriginal}
+					</a>
+					<button
+						onClick={(e) => {
+							e.stopPropagation()
+							onToggleHighlight(bookmark.id)
+						}}
+						className={`text-xs font-bold uppercase px-2 py-1 border border-black transition-colors whitespace-nowrap ${
+							bookmark.highlighted
+								? 'bg-yellow-400 hover:bg-white'
+								: 'bg-white hover:bg-yellow-400'
+						}`}
+					>
+						{bookmark.highlighted ? strings.app.unhighlight : strings.app.highlight}
+					</button>
+				</div>
 
 				{bookmark.externalLinks.length > 0 && (
 					<div className='flex flex-col gap-1.5'>
@@ -920,6 +939,16 @@ export default function App() {
 		setIsSearchModalOpen(false)
 	}
 
+	const handleToggleHighlight = (id: string) => {
+		setBookmarks((prev) =>
+			prev.map((b) => (b.id === id ? { ...b, highlighted: !b.highlighted } : b))
+		)
+	}
+
+	const highlightedBookmarks = useMemo(() => {
+		return bookmarks.filter((b) => b.highlighted).sort((a, b) => b.createdAt - a.createdAt)
+	}, [bookmarks])
+
 	// Group AND Sort by Date (Newest to Oldest)
 	const groupedBookmarks = useMemo(() => {
 		const groups: Record<string, Bookmark[]> = {}
@@ -1069,6 +1098,17 @@ export default function App() {
 									</button>
 								)
 							})}
+							{highlightedBookmarks.length > 0 && (
+								<button
+									onClick={() => scrollToCategory('DESTACAT')}
+									className='px-3 py-1 bg-yellow-400 border-2 border-black text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap shadow-[2px_2px_0px_0px_#000]'
+								>
+									★ {strings.app.highlightedCategory}
+									<span className='bg-black text-yellow-400 px-1.5 py-0.5 text-[10px] border border-black'>
+										{highlightedBookmarks.length}
+									</span>
+								</button>
+							)}
 						</div>
 					</div>
 				</div>
@@ -1123,6 +1163,17 @@ export default function App() {
 									</button>
 								)
 							})}
+							{highlightedBookmarks.length > 0 && (
+								<button
+									onClick={() => scrollToCategory('DESTACAT')}
+									className='text-left font-bold font-mono text-lg border-2 border-black p-3 hover:bg-black hover:text-white transition-all flex justify-between items-center bg-yellow-400 shadow-[4px_4px_0px_0px_#000]'
+								>
+									<span>★ {strings.app.highlightedCategory}</span>
+									<span className='bg-black text-yellow-400 text-xs px-2 py-1 border border-black'>
+										{highlightedBookmarks.length}
+									</span>
+								</button>
+							)}
 						</div>
 					</div>
 				</div>
@@ -1176,6 +1227,7 @@ export default function App() {
 										bookmark={bookmark}
 										onEdit={openEditModal}
 										onDelete={requestDelete}
+										onToggleHighlight={handleToggleHighlight}
 									/>
 								))}
 							</div>
@@ -1206,12 +1258,37 @@ export default function App() {
 											bookmark={bookmark}
 											onEdit={openEditModal}
 											onDelete={requestDelete}
+											onToggleHighlight={handleToggleHighlight}
 										/>
 									))}
 								</div>
 							</div>
 						)
 					})}
+
+				{/* DESTACAT Virtual Category — always last */}
+				{!searchQuery && highlightedBookmarks.length > 0 && (
+					<div id='category-DESTACAT' className='scroll-mt-48'>
+						<div className='flex items-center gap-4 mb-6'>
+							<h2 className='text-3xl font-black uppercase bg-yellow-400 text-black px-4 py-2 inline-block border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]'>
+								★ {strings.app.highlightedCategory}
+							</h2>
+							<span className='font-mono font-bold text-xl text-gray-500'>{highlightedBookmarks.length}</span>
+							<div className='h-1 flex-grow bg-yellow-400 border border-black'></div>
+						</div>
+						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6'>
+							{highlightedBookmarks.map((bookmark) => (
+								<BookmarkCard
+									key={bookmark.id}
+									bookmark={bookmark}
+									onEdit={openEditModal}
+									onDelete={requestDelete}
+									onToggleHighlight={handleToggleHighlight}
+								/>
+							))}
+						</div>
+					</div>
+				)}
 			</main>
 
 			{/* Log Console Modal (Only visible when loading or explicitly open) */}
