@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn-primary {
+    @apply bg-green-400 border-2 border-black px-4 py-2 font-bold uppercase text-sm hover:bg-green-300 active:translate-y-px;
+  }
+  .btn-secondary {
+    @apply bg-white border-2 border-black px-4 py-2 font-bold uppercase text-sm hover:bg-gray-100 active:translate-y-px;
+  }
+  .input {
+    @apply w-full border-2 border-black px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400;
+  }
+  .textarea {
+    @apply w-full border-2 border-black px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 resize-none;
+  }
+  .checkbox-label {
+    @apply flex items-center gap-2 text-sm cursor-pointer;
+  }
+  .checkbox-input {
+    @apply w-4 h-4 border-2 border-black accent-green-400;
+  }
+}

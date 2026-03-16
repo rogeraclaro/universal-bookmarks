@@ -2,7 +2,7 @@
 set -e
 
 PROXY_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLIST_NAME="com.ailinks.claude-proxy"
+PLIST_NAME="com.ailinks.universal-proxy"
 PLIST_SRC="$PROXY_DIR/$PLIST_NAME.plist"
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
 LOGS_DIR="$HOME/Library/Logs"
@@ -35,7 +35,7 @@ launchctl unload "$PLIST_DEST" 2>/dev/null || true
 # Load the LaunchAgent
 launchctl load "$PLIST_DEST"
 
-echo "Claude proxy LaunchAgent installed and started."
-echo "Logs: $LOGS_DIR/claude-proxy.log"
+echo "universal-bookmarks proxy LaunchAgent installed and started (port 3839)."
+echo "Logs: $LOGS_DIR/universal-proxy.log"
 echo "To check status: launchctl list | grep ailinks"
 echo "To stop: launchctl unload $PLIST_DEST"

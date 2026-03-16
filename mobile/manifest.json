@@ -1,0 +1,30 @@
+{
+  "name": "Universal Bookmarks",
+  "short_name": "Bookmarks",
+  "description": "Guarda pàgines web a la teva col·lecció de bookmarks",
+  "start_url": "/mobile/",
+  "display": "standalone",
+  "background_color": "#4ade80",
+  "theme_color": "#4ade80",
+  "icons": [
+    {
+      "src": "/mobile/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/mobile/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "share_target": {
+    "action": "/mobile/",
+    "method": "GET",
+    "params": {
+      "url": "url",
+      "title": "title",
+      "text": "text"
+    }
+  }
+}
