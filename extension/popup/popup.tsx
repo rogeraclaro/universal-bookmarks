@@ -46,6 +46,14 @@ export default function Popup() {
     restoreOrLoad();
   }, []);
 
+  // Save form state to session whenever it changes (so it survives tab switches)
+  useEffect(() => {
+    if (viewState !== 'form' || !metadata) return;
+    chrome.storage.session.set({
+      formState: { title, description, selectedCategories, metadata, categories }
+    });
+  }, [title, description, selectedCategories, viewState, metadata, categories]);
+
   // Auto-save review state to local storage whenever categories change during review
   useEffect(() => {
     if (viewState !== 'tabs-review' || tabReviewCategories.size === 0) return;
@@ -62,6 +70,23 @@ export default function Popup() {
   }, [tabReviewCategories, viewState]);
 
   async function restoreOrLoad() {
+    try {
+      const { singlePageMode, formState } = await chrome.storage.session.get(['singlePageMode', 'formState']);
+      if (singlePageMode) {
+        if (formState) {
+          const fs = formState as { title: string; description: string; selectedCategories: string[]; metadata: ExtractedMetadata; categories: string[] };
+          setTitle(fs.title);
+          setDescription(fs.description);
+          setSelectedCategories(fs.selectedCategories);
+          setMetadata(fs.metadata);
+          setCategories(fs.categories);
+          setViewState('form');
+        } else {
+          loadData();
+        }
+        return;
+      }
+    } catch { /* ignore */ }
     try {
       const saved = await chrome.storage.local.get('reviewState');
       if (saved.reviewState) {
@@ -303,6 +328,7 @@ export default function Popup() {
         throw new Error(saveResponse.error || ERRORS.API_ERROR);
       }
 
+      chrome.storage.session.remove(['singlePageMode', 'formState']);
       setViewState('success');
 
       // Auto-close after 1 second
@@ -318,6 +344,7 @@ export default function Popup() {
   }
 
   function handleCancel() {
+    chrome.storage.session.remove(['singlePageMode', 'formState']);
     window.close();
   }
 
@@ -511,7 +538,7 @@ export default function Popup() {
           <h1 className="text-lg font-bold uppercase">🔖 {UI_STRINGS.TABS_HEADING}</h1>
           <button
             className="text-xs underline font-mono hover:no-underline"
-            onClick={() => { loadData(); setViewState('loading'); }}
+            onClick={() => { chrome.storage.session.set({ singlePageMode: true }); loadData(); setViewState('loading'); }}
           >
             {UI_STRINGS.TABS_SAVE_THIS_PAGE}
           </button>
