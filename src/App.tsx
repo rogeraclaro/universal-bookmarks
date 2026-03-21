@@ -970,9 +970,14 @@ export default function App() {
 			<header className='bg-white border-b-4 border-black p-6 shadow-md'>
 				<div className='max-w-[1600px] mx-auto flex flex-col xl:flex-row justify-between items-center gap-6'>
 					<div className='flex items-center gap-4'>
-						<h1 className='text-4xl font-black uppercase tracking-tighter bg-black text-white px-3 py-1 inline-block transform -rotate-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]'>
-							{strings.app.title}
-						</h1>
+						<div className='flex flex-col'>
+							<h1 className='text-4xl font-black uppercase tracking-tighter bg-black text-white px-3 py-1 inline-block transform -rotate-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]'>
+								{strings.app.title}
+							</h1>
+							<p className='md:hidden font-mono text-xs text-gray-500 mt-1 px-1'>
+								{bookmarks.length} links
+							</p>
+						</div>
 						<div className='hidden md:block h-8 w-0.5 bg-black/20'></div>
 						<p className='hidden md:block font-mono text-sm text-gray-600 font-bold'>
 							{strings.app.total}: {bookmarks.length} | {strings.app.catLabel}: {categories.length}
@@ -1105,6 +1110,18 @@ export default function App() {
 								<span className='flex items-center gap-2'>
 									<Search size={18} />
 									CERCAR
+								</span>
+							</button>
+							<button
+								onClick={() => {
+									setIsMobileMenuOpen(false)
+									setIsCategoryModalOpen(true)
+								}}
+								className='text-left font-bold font-mono text-lg border-2 border-black p-3 bg-white hover:bg-black hover:text-white transition-all flex justify-between items-center shadow-[4px_4px_0px_0px_#000]'
+							>
+								<span className='flex items-center gap-2'>
+									<Settings size={18} />
+									GESTIONAR CATEGORIES
 								</span>
 							</button>
 							{categories.map((cat) => {
