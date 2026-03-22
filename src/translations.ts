@@ -22,9 +22,6 @@ export const strings = {
     catLabel: "Categories",
     processingProgress: "Processant {0}%...",
     jumpTo: "Dreceres:",
-    highlight: "Destacar",
-    unhighlight: "No destacar",
-    highlightedCategory: "DESTACAT",
   },
   logs: {
     title: "Registre d'Importació",
