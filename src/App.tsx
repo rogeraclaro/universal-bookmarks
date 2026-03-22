@@ -37,7 +37,14 @@ const BookmarkCard: React.FC<{
 	const dateStr = new Date(bookmark.createdAt).toISOString().split('T')[0]
 
 	return (
+<<<<<<< HEAD
 		<div className={`border-2 border-black p-5 h-full flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 ${bookmark.highlighted ? 'bg-yellow-400/50' : 'bg-white'}`}>
+=======
+		<div
+			className='border-2 border-black p-5 h-full flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200'
+			style={{ backgroundColor: bookmark.highlighted ? 'rgba(74, 222, 128, 0.5)' : 'white' }} 
+		>
+>>>>>>> aeefba15a80a16523486f010d5a5ce1e98b127c3
 			<div className='flex justify-between items-start mb-2'>
 				<div className='flex flex-wrap gap-1.5'>
 					{bookmark.categories.map((cat, idx) => (
@@ -118,14 +125,29 @@ const BookmarkCard: React.FC<{
 			</p>
 
 			<div className='mt-auto pt-4 border-t-2 border-black/10 flex flex-col gap-3'>
-				<a
-					href={bookmark.originalLink}
-					target='_blank'
-					rel='noopener noreferrer'
-					className='text-xs font-bold uppercase flex items-center gap-2 hover:bg-black hover:text-white w-fit px-2 py-1 transition-colors border border-black'
-				>
-					<Twitter size={14} /> {strings.app.viewOriginal}
-				</a>
+				<div className='flex items-center justify-between gap-2'>
+					<a
+						href={bookmark.originalLink}
+						target='_blank'
+						rel='noopener noreferrer'
+						className='text-xs font-bold uppercase flex items-center gap-2 hover:bg-black hover:text-white w-fit px-2 py-1 transition-colors border border-black'
+					>
+						<Twitter size={14} /> {strings.app.viewOriginal}
+					</a>
+					<button
+						onClick={(e) => {
+							e.stopPropagation()
+							onToggleHighlight(bookmark.id)
+						}}
+						className={`text-xs font-bold uppercase px-2 py-1 border border-black transition-colors whitespace-nowrap ${
+							bookmark.highlighted
+								? 'bg-yellow-400 hover:bg-white'
+								: 'bg-white hover:bg-yellow-400'
+						}`}
+					>
+						{bookmark.highlighted ? strings.app.unhighlight : strings.app.highlight}
+					</button>
+				</div>
 
 				{bookmark.externalLinks.length > 0 && (
 					<div className='flex flex-col gap-1.5'>
@@ -914,6 +936,7 @@ export default function App() {
 		setIsSearchModalOpen(false)
 	}
 
+<<<<<<< HEAD
 	const searchResults = useMemo(() => {
 		if (!searchQuery.trim()) return []
 		const lowerQuery = searchQuery.toLowerCase().trim()
@@ -925,6 +948,8 @@ export default function App() {
 		})
 	}, [bookmarks, searchQuery])
 
+=======
+>>>>>>> aeefba15a80a16523486f010d5a5ce1e98b127c3
 	const handleToggleHighlight = (id: string) => {
 		setBookmarks((prev) =>
 			prev.map((b) => (b.id === id ? { ...b, highlighted: !b.highlighted } : b))
@@ -1089,6 +1114,17 @@ export default function App() {
 									</button>
 								)
 							})}
+							{highlightedBookmarks.length > 0 && (
+								<button
+									onClick={() => scrollToCategory('DESTACAT')}
+									className='px-3 py-1 bg-yellow-400 border-2 border-black text-xs font-bold uppercase hover:bg-black hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap shadow-[2px_2px_0px_0px_#000]'
+								>
+									★ {strings.app.highlightedCategory}
+									<span className='bg-black text-yellow-400 px-1.5 py-0.5 text-[10px] border border-black'>
+										{highlightedBookmarks.length}
+									</span>
+								</button>
+							)}
 						</div>
 						{highlightedBookmarks.length > 0 && (
 							<button
@@ -1168,7 +1204,11 @@ export default function App() {
 							})}
 							{highlightedBookmarks.length > 0 && (
 								<button
+<<<<<<< HEAD
 									onClick={() => { scrollToCategory('DESTACAT'); setIsMobileMenuOpen(false) }}
+=======
+									onClick={() => scrollToCategory('DESTACAT')}
+>>>>>>> aeefba15a80a16523486f010d5a5ce1e98b127c3
 									className='text-left font-bold font-mono text-lg border-2 border-black p-3 hover:bg-black hover:text-white transition-all flex justify-between items-center bg-yellow-400 shadow-[4px_4px_0px_0px_#000]'
 								>
 									<span>★ {strings.app.highlightedCategory}</span>
