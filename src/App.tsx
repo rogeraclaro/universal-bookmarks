@@ -6,21 +6,30 @@ import {
 	Trash2,
 	Plus,
 	Settings,
-	Twitter,
 	Link as LinkIcon,
+	Link2,
 	Download,
 	Hash,
 	Menu,
 	Calendar,
 	User,
 	Search,
+	Sun,
+	Moon,
 } from 'lucide-react'
+
+const XLogo = ({ size = 14 }: { size?: number }) => (
+	<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+		<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.631z"/>
+	</svg>
+)
 import type { Bookmark, Category, TweetRaw, LogEntry } from './types'
 import { processBookmarksWithClaude } from './services/claudeService'
 import { storage } from './services/storage'
 import { Button, Input, Label, TextArea, Badge, Modal } from './components/UI'
 import { ScrollToTop } from './components/ScrollToTop'
 import { strings } from './translations'
+import { theme } from './theme'
 
 // --- Helper Components ---
 
@@ -112,7 +121,10 @@ const BookmarkCard: React.FC<{
 						rel='noopener noreferrer'
 						className='text-xs font-bold uppercase flex items-center gap-2 hover:bg-black hover:text-white w-fit px-2 py-1 transition-colors border border-black'
 					>
-						<Twitter size={14} /> {strings.app.viewOriginal}
+						{/twitter\.com|x\.com/i.test(bookmark.originalLink)
+							? <><XLogo size={14} /> {strings.app.viewTweet}</>
+							: <><Link2 size={14} /> {strings.app.viewLink}</>
+						}
 					</a>
 					<button
 						onClick={(e) => {
@@ -155,7 +167,9 @@ export default function App() {
 	const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
 	const [categories, setCategories] = useState<Category[]>([])
 	const [deletedIds, setDeletedIds] = useState<string[]>([])
+	const [isDataLoading, setIsDataLoading] = useState(true)
 	const [isLoading, setIsLoading] = useState(false)
+	const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
 	const [progress, setProgress] = useState({ current: 0, total: 0 })
 	const [logs, setLogs] = useState<LogEntry[]>([])
 
@@ -225,6 +239,12 @@ export default function App() {
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const logsEndRef = useRef<HTMLDivElement>(null)
 
+	// Dark mode
+	useEffect(() => {
+		document.documentElement.classList.toggle('dark', darkMode)
+		localStorage.setItem('darkMode', String(darkMode))
+	}, [darkMode])
+
 	// Auto-scroll logs
 	useEffect(() => {
 		logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -269,6 +289,8 @@ export default function App() {
 			} catch (error) {
 				console.error('Failed to load data', error)
 				setCategories(strings.defaults.categories)
+			} finally {
+				setIsDataLoading(false)
 			}
 		}
 		loadData()
@@ -981,10 +1003,19 @@ export default function App() {
 		}
 	}
 
+	if (isDataLoading) {
+		return (
+			<div className={theme.loadingPage}>
+				<div className={theme.loadingSpinner} />
+				<p className={theme.loadingText}>{strings.app.loadingData}</p>
+			</div>
+		)
+	}
+
 	return (
-		<div className='min-h-screen bg-[#f0f0f0] text-black pb-20'>
+		<div className={theme.page}>
 			{/* Main Header (Static) */}
-			<header className='bg-white border-b-4 border-black p-6 shadow-md'>
+			<header className={theme.header}>
 				<div className='max-w-[1600px] mx-auto flex flex-col xl:flex-row justify-between items-center gap-6'>
 					<div className='flex items-center gap-4'>
 						<div className='flex flex-col'>
@@ -1055,13 +1086,21 @@ export default function App() {
 						>
 							RESET
 						</Button>
+
+						<button
+							onClick={() => setDarkMode(d => !d)}
+							className='p-2.5 border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors'
+							title={darkMode ? 'Mode dia' : 'Mode nit'}
+						>
+							{darkMode ? <Sun size={18} /> : <Moon size={18} />}
+						</button>
 					</div>
 				</div>
 			</header>
 
 			{/* Desktop Sticky Category Nav (Hidden on Mobile) */}
 			{bookmarks.length > 0 && (
-				<div className='hidden md:block sticky top-0 z-40 bg-[#f0f0f0]/95 backdrop-blur border-b-2 border-black py-3 px-6 shadow-sm'>
+				<div className={theme.stickyNav}>
 					<div className='max-w-[1600px] mx-auto flex flex-wrap items-center gap-3'>
 						<span className='font-mono font-bold uppercase text-xs text-gray-500 whitespace-nowrap'>
 							{strings.app.jumpTo}
