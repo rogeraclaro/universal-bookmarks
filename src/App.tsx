@@ -14,9 +14,21 @@ import {
 	Calendar,
 	User,
 	Search,
-	Sun,
-	Moon,
+	LogOut,
 } from 'lucide-react'
+
+const ADMIN_HASH = '3fc78049b35886a8df669a3b026cb3e6f99ffac6941ea5a42d580475de3a72ae'
+
+const setCookie = (name: string, value: string, maxAge: number) => {
+	document.cookie = `${name}=${value}; max-age=${maxAge}; path=/`
+}
+const getCookie = (name: string): string | null => {
+	const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'))
+	return match ? decodeURIComponent(match[1]) : null
+}
+const deleteCookie = (name: string) => {
+	document.cookie = `${name}=; max-age=0; path=/`
+}
 
 const XLogo = ({ size = 14 }: { size?: number }) => (
 	<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -35,10 +47,11 @@ import { theme } from './theme'
 
 const BookmarkCard: React.FC<{
 	bookmark: Bookmark
+	isLoggedIn: boolean
 	onEdit: (b: Bookmark) => void
 	onDelete: (id: string, originalId: string) => void
 	onToggleHighlight: (id: string) => void
-}> = ({ bookmark, onEdit, onDelete, onToggleHighlight }) => {
+}> = ({ bookmark, isLoggedIn, onEdit, onDelete, onToggleHighlight }) => {
 	// Extract original ID for blacklist purposes
 	const originalId = bookmark.originalLink.split('/').pop() || ''
 
@@ -46,7 +59,9 @@ const BookmarkCard: React.FC<{
 	const dateStr = new Date(bookmark.createdAt).toISOString().split('T')[0]
 
 	return (
-		<div className={`border-2 border-black p-5 h-full flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 ${bookmark.highlighted ? 'bg-yellow-400/50' : 'bg-white'}`}>
+		<div
+			onClick={() => window.open(bookmark.originalLink, '_blank', 'noopener,noreferrer')}
+			className={`cursor-pointer border-2 border-black p-5 h-full max-h-[500px] flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 ${bookmark.highlighted ? 'bg-yellow-400/50' : 'bg-white'}`}>
 			<div className='flex justify-between items-start mb-2'>
 				<div className='flex flex-wrap gap-1.5'>
 					{bookmark.categories.map((cat, idx) => (
@@ -55,28 +70,30 @@ const BookmarkCard: React.FC<{
 						</Badge>
 					))}
 				</div>
-				<div className='flex gap-2 items-center'>
-					<button
-						onClick={(e) => {
-							e.stopPropagation()
-							onEdit(bookmark)
-						}}
-						className='p-1.5 hover:bg-green-300 border border-transparent hover:border-black transition-colors'
-						title={strings.modal.editTitle}
-					>
-						<Edit2 size={16} />
-					</button>
-					<button
-						onClick={(e) => {
-							e.stopPropagation()
-							onDelete(bookmark.id, originalId)
-						}}
-						className='p-1.5 hover:bg-red-500 hover:text-white border border-transparent hover:border-black transition-colors'
-						title={strings.modal.deleteTitle}
-					>
-						<Trash2 size={16} />
-					</button>
-				</div>
+				{isLoggedIn && (
+					<div className='flex gap-2 items-center'>
+						<button
+							onClick={(e) => {
+								e.stopPropagation()
+								onEdit(bookmark)
+							}}
+							className='p-1.5 hover:bg-green-300 border border-transparent hover:border-black transition-colors'
+							title={strings.modal.editTitle}
+						>
+							<Edit2 size={16} />
+						</button>
+						<button
+							onClick={(e) => {
+								e.stopPropagation()
+								onDelete(bookmark.id, originalId)
+							}}
+							className='p-1.5 hover:bg-red-500 hover:text-white border border-transparent hover:border-black transition-colors'
+							title={strings.modal.deleteTitle}
+						>
+							<Trash2 size={16} />
+						</button>
+					</div>
+				)}
 			</div>
 
 			{/* Meta Info: Date & Author */}
@@ -109,7 +126,7 @@ const BookmarkCard: React.FC<{
 			<h3 className='font-bold text-xl leading-tight mb-3'>{bookmark.title}</h3>
 
 			{/* Raw Text Description */}
-			<p className='text-gray-700 font-mono mb-6 flex-grow leading-relaxed text-sm whitespace-pre-wrap break-words'>
+			<p className='text-gray-700 font-mono mb-6 flex-grow min-h-0 overflow-hidden leading-relaxed text-sm whitespace-pre-wrap break-words'>
 				{bookmark.description}
 			</p>
 
@@ -119,6 +136,7 @@ const BookmarkCard: React.FC<{
 						href={bookmark.originalLink}
 						target='_blank'
 						rel='noopener noreferrer'
+						onClick={(e) => e.stopPropagation()}
 						className='text-xs font-bold uppercase flex items-center gap-2 hover:bg-black hover:text-white w-fit px-2 py-1 transition-colors border border-black'
 					>
 						{/twitter\.com|x\.com/i.test(bookmark.originalLink)
@@ -126,19 +144,21 @@ const BookmarkCard: React.FC<{
 							: <><Link2 size={14} /> {strings.app.viewLink}</>
 						}
 					</a>
-					<button
-						onClick={(e) => {
-							e.stopPropagation()
-							onToggleHighlight(bookmark.id)
-						}}
-						className={`text-xs font-bold uppercase px-2 py-1 border border-black transition-colors whitespace-nowrap ${
-							bookmark.highlighted
-								? 'bg-yellow-400 hover:bg-white'
-								: 'bg-white hover:bg-yellow-400'
-						}`}
-					>
-						{bookmark.highlighted ? strings.app.unhighlight : strings.app.highlight}
-					</button>
+					{isLoggedIn && (
+						<button
+							onClick={(e) => {
+								e.stopPropagation()
+								onToggleHighlight(bookmark.id)
+							}}
+							className={`text-xs font-bold uppercase px-2 py-1 border border-black transition-colors whitespace-nowrap ${
+								bookmark.highlighted
+									? 'bg-yellow-400 hover:bg-white'
+									: 'bg-white hover:bg-yellow-400'
+							}`}
+						>
+							{bookmark.highlighted ? strings.app.unhighlight : strings.app.highlight}
+						</button>
+					)}
 				</div>
 
 				{bookmark.externalLinks.length > 0 && (
@@ -149,6 +169,7 @@ const BookmarkCard: React.FC<{
 								href={link}
 								target='_blank'
 								rel='noopener noreferrer'
+								onClick={(e) => e.stopPropagation()}
 								className='text-xs text-blue-700 truncate flex items-center gap-2 hover:underline decoration-2'
 							>
 								<LinkIcon size={12} /> {new URL(link).hostname}
@@ -169,9 +190,15 @@ export default function App() {
 	const [deletedIds, setDeletedIds] = useState<string[]>([])
 	const [isDataLoading, setIsDataLoading] = useState(true)
 	const [isLoading, setIsLoading] = useState(false)
-	const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
+	const [darkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
 	const [progress, setProgress] = useState({ current: 0, total: 0 })
 	const [logs, setLogs] = useState<LogEntry[]>([])
+
+	const [isLoggedIn, setIsLoggedIn] = useState(() => getCookie('session') === 'valid')
+	const [loginModalOpen, setLoginModalOpen] = useState(false)
+	const [loginUser, setLoginUser] = useState('')
+	const [loginPass, setLoginPass] = useState('')
+	const [loginError, setLoginError] = useState('')
 
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 	const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null)
@@ -244,6 +271,51 @@ export default function App() {
 		document.documentElement.classList.toggle('dark', darkMode)
 		localStorage.setItem('darkMode', String(darkMode))
 	}, [darkMode])
+
+	// Session cookie renewal on activity
+	useEffect(() => {
+		if (!isLoggedIn) return
+		const renew = () => setCookie('session', 'valid', 120)
+		window.addEventListener('mousemove', renew)
+		window.addEventListener('click', renew)
+		window.addEventListener('keypress', renew)
+		return () => {
+			window.removeEventListener('mousemove', renew)
+			window.removeEventListener('click', renew)
+			window.removeEventListener('keypress', renew)
+		}
+	}, [isLoggedIn])
+
+	// Session expiry check every 10s
+	useEffect(() => {
+		const interval = setInterval(() => {
+			if (isLoggedIn && getCookie('session') !== 'valid') setIsLoggedIn(false)
+		}, 10000)
+		return () => clearInterval(interval)
+	}, [isLoggedIn])
+
+	const handleLogin = async () => {
+		const encoder = new TextEncoder()
+		const data = encoder.encode(`${loginUser}:${loginPass}`)
+		const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+		const hashArray = Array.from(new Uint8Array(hashBuffer))
+		const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+		if (hashHex === ADMIN_HASH) {
+			setCookie('session', 'valid', 120)
+			setIsLoggedIn(true)
+			setLoginModalOpen(false)
+			setLoginUser('')
+			setLoginPass('')
+			setLoginError('')
+		} else {
+			setLoginError('Credencials incorrectes')
+		}
+	}
+
+	const handleLogout = () => {
+		deleteCookie('session')
+		setIsLoggedIn(false)
+	}
 
 	// Auto-scroll logs
 	useEffect(() => {
@@ -903,8 +975,8 @@ export default function App() {
 			return
 		}
 
-		// Reorder categories
-		const newCategories = [...categories]
+		// Reorder categories (operate on sorted view)
+		const newCategories = [...sortedCategories]
 		const draggedCategory = newCategories[draggedCategoryIndex]
 		newCategories.splice(draggedCategoryIndex, 1)
 		newCategories.splice(dropIndex, 0, draggedCategory)
@@ -937,6 +1009,8 @@ export default function App() {
 		// Close search modal
 		setIsSearchModalOpen(false)
 	}
+
+	const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.localeCompare(b, 'ca')), [categories])
 
 	const searchResults = useMemo(() => {
 		if (!searchQuery.trim()) return []
@@ -1033,67 +1107,80 @@ export default function App() {
 					</div>
 
 					<div className='flex flex-wrap gap-3 items-center justify-left'>
-						<label className='cursor-pointer'>
-							<input
-								type='file'
-								accept='.json'
-								onChange={handleFileUpload}
-								className='hidden'
-								disabled={isLoading}
-							/>
-							<div
-								className={`font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-green-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${isLoading ? 'cursor-not-allowed opacity-50' : ''
-									}`}
+						{!isLoggedIn && (
+							<button
+								onClick={() => setLoginModalOpen(true)}
+								className='font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-green-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
 							>
-								<Upload size={18} /> {strings.app.importJson}
-							</div>
-						</label>
+								LOGIN
+							</button>
+						)}
 
-						<div className='h-8 w-px bg-gray-300 mx-1'></div>
+						{isLoggedIn && (
+							<>
+								<label className='cursor-pointer'>
+									<input
+										type='file'
+										accept='.json'
+										onChange={handleFileUpload}
+										className='hidden'
+										disabled={isLoading}
+									/>
+									<div
+										className={`font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-green-400 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${isLoading ? 'cursor-not-allowed opacity-50' : ''
+											}`}
+									>
+										<Upload size={18} /> {strings.app.importJson}
+									</div>
+								</label>
 
-						<Button
-							onClick={handleExport}
-							variant='secondary'
-							className='py-2.5 px-4'
-							icon={<Download size={18} />}
-						>
-							{strings.app.exportData}
-						</Button>
+								<div className='h-8 w-px bg-gray-300 mx-1'></div>
 
-						<Button
-							onClick={openNewBookmarkModal}
-							variant='secondary'
-							className='py-2.5 px-4'
-							icon={<Plus size={18} />}
-						>
-							{strings.app.addManual}
-						</Button>
+								<Button
+									onClick={handleExport}
+									variant='secondary'
+									className='py-2.5 px-4'
+									icon={<Download size={18} />}
+								>
+									{strings.app.exportData}
+								</Button>
 
-						<Button
-							onClick={() => setIsCategoryModalOpen(true)}
-							variant='secondary'
-							className='py-2.5 px-4'
-							icon={<Settings size={18} />}
-						>
-							{strings.app.categories}
-						</Button>
+								<Button
+									onClick={openNewBookmarkModal}
+									variant='secondary'
+									className='py-2.5 px-4'
+									icon={<Plus size={18} />}
+								>
+									{strings.app.addManual}
+								</Button>
 
-						<Button
-							onClick={handleResetData}
-							variant='danger'
-							className='py-2.5 px-4 reset'
-							icon={<Trash2 size={18} />}
-						>
-							RESET
-						</Button>
+								<Button
+									onClick={() => setIsCategoryModalOpen(true)}
+									variant='secondary'
+									className='py-2.5 px-4'
+									icon={<Settings size={18} />}
+								>
+									{strings.app.categories}
+								</Button>
 
-						<button
-							onClick={() => setDarkMode(d => !d)}
-							className='p-2.5 border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors'
-							title={darkMode ? 'Mode dia' : 'Mode nit'}
-						>
-							{darkMode ? <Sun size={18} /> : <Moon size={18} />}
-						</button>
+								<Button
+									onClick={handleResetData}
+									variant='danger'
+									className='py-2.5 px-4 reset'
+									icon={<Trash2 size={18} />}
+								>
+									RESET
+								</Button>
+
+								<button
+									onClick={handleLogout}
+									className='font-mono font-bold text-sm px-5 py-2.5 border-2 border-black flex items-center gap-2 transition-all bg-white shadow-[4px_4px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
+								>
+									<LogOut size={18} /> LOGOUT
+								</button>
+							</>
+						)}
+
 					</div>
 				</div>
 			</header>
@@ -1114,7 +1201,7 @@ export default function App() {
 							CERCAR
 						</button>
 						<div className='flex flex-wrap gap-2'>
-							{categories.map((cat) => {
+							{sortedCategories.map((cat) => {
 								const count = groupedBookmarks[cat]?.length || 0
 								if (count === 0) return null
 								return (
@@ -1191,7 +1278,7 @@ export default function App() {
 									GESTIONAR CATEGORIES
 								</span>
 							</button>
-							{categories.map((cat) => {
+							{sortedCategories.map((cat) => {
 								const count = groupedBookmarks[cat]?.length || 0
 								if (count === 0) return null
 								return (
@@ -1268,6 +1355,7 @@ export default function App() {
 									<BookmarkCard
 										key={bookmark.id}
 										bookmark={bookmark}
+										isLoggedIn={isLoggedIn}
 										onEdit={openEditModal}
 										onDelete={requestDelete}
 										onToggleHighlight={handleToggleHighlight}
@@ -1280,7 +1368,7 @@ export default function App() {
 
 				{/* Categories View (only show when no search) */}
 				{!searchQuery &&
-					categories.map((category) => {
+					sortedCategories.map((category) => {
 						const items = groupedBookmarks[category]
 						if (!items || items.length === 0) return null
 
@@ -1299,6 +1387,7 @@ export default function App() {
 										<BookmarkCard
 											key={bookmark.id}
 											bookmark={bookmark}
+											isLoggedIn={isLoggedIn}
 											onEdit={openEditModal}
 											onDelete={requestDelete}
 											onToggleHighlight={handleToggleHighlight}
@@ -1324,6 +1413,7 @@ export default function App() {
 								<BookmarkCard
 									key={bookmark.id}
 									bookmark={bookmark}
+									isLoggedIn={isLoggedIn}
 									onEdit={openEditModal}
 									onDelete={requestDelete}
 									onToggleHighlight={handleToggleHighlight}
@@ -1462,7 +1552,7 @@ export default function App() {
 								</div>
 								{/* Category List */}
 								<div className='p-3 space-y-2 max-h-64 overflow-y-auto'>
-									{categories.map((cat) => (
+									{sortedCategories.map((cat) => (
 										<label key={cat} className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1'>
 											<input
 												type='checkbox'
@@ -1562,7 +1652,7 @@ export default function App() {
 					<p className='text-sm text-gray-600 font-mono mb-2'>
 						💡 Arrossega les categories per canviar l'ordre
 					</p>
-					{categories.map((cat, index) => (
+					{sortedCategories.map((cat, index) => (
 						<div
 							key={cat}
 							draggable={true}
@@ -1655,6 +1745,57 @@ export default function App() {
 			{/* Carousel Modal for editing tweets one by one - REMOVED */}
 
 			{/* Trial Countdown Widget removed — Claude proxy replaces Gemini */}
+
+			{/* Login Modal */}
+			{loginModalOpen && (
+				<div className='fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4'>
+					<div className='bg-white border-4 border-black w-full max-w-sm shadow-[8px_8px_0px_0px_#000]'>
+						<div className='p-4 border-b-4 border-black bg-yellow-400 flex justify-between items-center'>
+							<h2 className='font-black text-xl uppercase font-mono'>LOGIN</h2>
+							<button
+								onClick={() => { setLoginModalOpen(false); setLoginError('') }}
+								className='p-1 hover:bg-black hover:text-white transition-colors border border-transparent hover:border-black'
+							>
+								<X size={20} />
+							</button>
+						</div>
+						<div className='p-6 flex flex-col gap-4'>
+							<div className='flex flex-col gap-1'>
+								<label className='font-mono font-bold text-sm uppercase'>Usuari</label>
+								<input
+									type='text'
+									value={loginUser}
+									onChange={(e) => setLoginUser(e.target.value)}
+									onKeyDown={(e) => { if (e.key === 'Enter') handleLogin() }}
+									className='border-2 border-black px-3 py-2 font-mono focus:outline-none focus:bg-yellow-50'
+									autoFocus
+								/>
+							</div>
+							<div className='flex flex-col gap-1'>
+								<label className='font-mono font-bold text-sm uppercase'>Password</label>
+								<input
+									type='password'
+									value={loginPass}
+									onChange={(e) => setLoginPass(e.target.value)}
+									onKeyDown={(e) => { if (e.key === 'Enter') handleLogin() }}
+									className='border-2 border-black px-3 py-2 font-mono focus:outline-none focus:bg-yellow-50'
+								/>
+							</div>
+							{loginError && (
+								<p className='font-mono text-sm font-bold text-red-600 border-2 border-red-500 bg-red-50 px-3 py-2'>
+									{loginError}
+								</p>
+							)}
+							<button
+								onClick={handleLogin}
+								className='font-mono font-black text-sm uppercase px-5 py-3 border-2 border-black bg-black text-white shadow-[4px_4px_0px_0px_#fbbf24] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_#fbbf24] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all'
+							>
+								Entrar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{/* Scroll to Top Button */}
 			<ScrollToTop />

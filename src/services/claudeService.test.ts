@@ -26,7 +26,7 @@ describe('claudeService', () => {
       externalLinks: []
     };
 
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => mockResult
     } as any);
@@ -41,7 +41,7 @@ describe('claudeService', () => {
   });
 
   it('fallback path — creates fallback entry when fetch throws network error', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
 
     const tweets: TweetRaw[] = [{ id_str: '456', full_text: 'Some tweet content here' }];
     const { processBookmarksWithClaude } = await getModule();
@@ -53,7 +53,7 @@ describe('claudeService', () => {
   });
 
   it('abort signal — throws AbortError if signal.aborted before processing', async () => {
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
 
     const tweets: TweetRaw[] = [{ id_str: '789', full_text: 'Tweet to abort' }];
     const { processBookmarksWithClaude } = await getModule();
@@ -69,7 +69,7 @@ describe('claudeService', () => {
   });
 
   it('empty input — returns empty array for empty tweet list', async () => {
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
 
     const { processBookmarksWithClaude } = await getModule();
     const results = await processBookmarksWithClaude([], ['Tech'], noop, noopLog);
