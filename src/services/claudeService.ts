@@ -27,7 +27,7 @@ export const processBookmarksWithClaude = async (
   onLog: (message: string, type: 'info' | 'success' | 'warning' | 'error') => void,
   signal?: AbortSignal
 ): Promise<ProcessedTweetResult[]> => {
-  const proxyUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLAUDE_PROXY_URL) || 'http://localhost:3839';
+  const proxyUrl = 'https://links.masellas.info/api';
   const results: ProcessedTweetResult[] = [];
   const validTweets = rawTweets.filter(t => (t.full_text || t.text));
 
@@ -54,7 +54,10 @@ export const processBookmarksWithClaude = async (
       try {
         const response = await fetch(`${proxyUrl}/process-tweet`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-secret': '4eb6fd03128af657e3b37c1467d00823',
+          },
           body: JSON.stringify({
             tweet: { id: tweetId, text: sanitized, urls },
             categories: currentCategories
