@@ -68,5 +68,3 @@ export const UI_STRINGS = {
   TABS_REVIEW_OPEN_TAB: "Obrir pestanya"
 };
 
-// Claude proxy — local server that uses claude -p CLI subprocess
-export const CLAUDE_PROXY_URL = 'http://localhost:3839';

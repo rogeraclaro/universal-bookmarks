@@ -1,4 +1,4 @@
-import { API_CONFIG, CLAUDE_PROXY_URL } from './config';
+import { API_CONFIG } from './config';
 import type { Bookmark, APIBookmarksResponse, APICategoriesResponse, APISaveResponse } from './types';
 
 // Generic API request function
@@ -98,24 +98,23 @@ export async function saveCategory(newCategory: string): Promise<string[]> {
   }
 }
 
-// Call Claude proxy for AI categorization — always resolves, never throws
+// Call VPS AI endpoint for categorization — always resolves, never throws
 export async function callClaudeProxy(data: {
   url: string;
   title: string;
   description: string;
-  categories?: string[]; // optional — pass known categories for better AI matching
+  categories?: string[];
 }): Promise<{ categories: string[]; title?: string; description?: string }> {
   try {
-    const response = await fetch(`${CLAUDE_PROXY_URL}/categorize`, {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/categorize`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: API_CONFIG.HEADERS,
       body: JSON.stringify(data),
-      signal: AbortSignal.timeout(30000) // 30s — tweets need more time
+      signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) return { categories: [] };
     return await response.json();
   } catch {
-    // Proxy unreachable (ECONNREFUSED, timeout) — graceful fallback
     return { categories: [] };
   }
 }

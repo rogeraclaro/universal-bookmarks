@@ -14,8 +14,8 @@ const MoonIcon = () => (
   </svg>
 )
 import type { Bookmark } from '../../extension/shared/types';
-import { getCategories, saveBookmark, isDuplicate } from './api';
-import { parseShareParams, resolveAuthorFromUrl } from './utils';
+import { getCategories, saveBookmark, isDuplicate, callAICategorize } from './api';
+import { resolveAuthorFromUrl } from './utils';
 
 const ERRORS = {
   NO_TITLE: "El títol no pot estar buit",
@@ -41,7 +41,7 @@ const UI = {
   ADD_CATEGORY: "Afegir",
 };
 
-type ViewState = 'loading' | 'form' | 'duplicate' | 'success' | 'error';
+type ViewState = 'loading' | 'categorizing' | 'form' | 'duplicate' | 'success' | 'error';
 
 export default function App() {
   const [viewState, setViewState] = useState<ViewState>('loading');
@@ -63,15 +63,45 @@ export default function App() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { url: sharedUrl, title: sharedTitle } = parseShareParams(window.location.search);
+    const raw = sessionStorage.getItem('__pendingShare');
+    const { url: sharedUrl, title: sharedTitle, text: sharedText } = raw
+      ? JSON.parse(raw)
+      : { url: '', title: '', text: '' };
+
     setUrl(sharedUrl);
     setTitle(sharedTitle);
 
+    let cats: string[] = ['Altres'];
     try {
-      const cats = await getCategories();
-      setCategories(cats.length > 0 ? cats : ['Altres']);
+      const fetched = await getCategories();
+      cats = fetched.length > 0 ? fetched : ['Altres'];
+      setCategories(cats);
     } catch {
-      setCategories(['Altres']);
+      setCategories(cats);
+    }
+
+    if (sharedUrl) {
+      setViewState('categorizing');
+      const result = await callAICategorize({
+        url: sharedUrl,
+        title: sharedTitle,
+        description: sharedText,
+        categories: cats,
+      });
+      if (result.title) {
+        setTitle(result.title);
+      } else if (!sharedTitle) {
+        try { setTitle(new URL(sharedUrl).hostname); } catch { /* invalid URL */ }
+      }
+      if (result.description) setDescription(result.description);
+      if (result.categories.length > 0) {
+        const normalize = (s: string) =>
+          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+        const valid = result.categories
+          .map(c => cats.find(rc => normalize(rc) === normalize(c)))
+          .filter((rc): rc is string => rc !== undefined);
+        if (valid.length > 0) setSelectedCategories(valid);
+      }
     }
 
     setViewState('form');
@@ -127,11 +157,12 @@ export default function App() {
     }
   }
 
-  if (viewState === 'loading') {
+  if (viewState === 'loading' || viewState === 'categorizing') {
+    const message = viewState === 'categorizing' ? 'Categoritzant amb IA...' : UI.LOADING;
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col items-center justify-center gap-4">
         <div className="w-12 h-12 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin" />
-        <p className="font-mono text-sm dark:text-white">{UI.LOADING}</p>
+        <p className="font-mono text-sm dark:text-white">{message}</p>
       </div>
     );
   }
