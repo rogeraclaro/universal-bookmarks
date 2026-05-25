@@ -370,22 +370,11 @@ export default function Popup() {
       try {
         let tabDescription = '';
         try {
-          const [{ result }] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-              if (document.querySelector('[data-testid="tweetText"]')) {
-                const el = document.querySelector('[data-testid="tweetText"]');
-                return (el as HTMLElement | null)?.innerText ?? '';
-              }
-              const metaDesc = (document.querySelector('meta[name="description"]') as HTMLMetaElement | null)?.content;
-              const ogDesc = (document.querySelector('meta[property="og:description"]') as HTMLMetaElement | null)?.content;
-              const h1 = (document.querySelector('h1') as HTMLElement | null)?.innerText;
-              const firstP = (document.querySelector('article p, main p, p') as HTMLElement | null)?.innerText;
-              return [metaDesc, ogDesc, h1, firstP].filter(Boolean).join(' ').slice(0, 500);
-            },
-          });
-          tabDescription = result ?? '';
-        } catch { /* not scriptable */ }
+          const metaResp = await chrome.tabs.sendMessage(tab.id, { type: 'GET_METADATA' });
+          if (metaResp?.success && metaResp.data?.description) {
+            tabDescription = metaResp.data.description;
+          }
+        } catch { /* content script not available for this tab */ }
 
         const aiResult = await callClaudeProxy({
           url: tab.url,
