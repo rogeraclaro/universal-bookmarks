@@ -1234,13 +1234,21 @@ export default function App() {
 			)}
 
 			{/* Mobile Fixed Burger Menu (Visible only on Mobile) */}
-			<div className='md:hidden fixed top-4 left-1/2 -translate-x-1/2 z-50'>
+			<div className='md:hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2'>
 				<button
 					onClick={() => setIsMobileMenuOpen(true)}
 					className='bg-green-400 border-2 border-black px-4 py-2 font-bold font-mono text-sm shadow-[4px_4px_0px_0px_#000] flex items-center gap-2 active:translate-y-[2px] active:shadow-none'
 				>
 					<Menu size={18} /> CATEGORIES
 				</button>
+				{!isLoggedIn && (
+					<button
+						onClick={() => setLoginModalOpen(true)}
+						className='bg-white border-2 border-black px-4 py-2 font-bold font-mono text-sm shadow-[4px_4px_0px_0px_#000] flex items-center gap-2 active:translate-y-[2px] active:shadow-none'
+					>
+						LOGIN
+					</button>
+				)}
 			</div>
 
 			{/* Mobile Menu Modal */}
