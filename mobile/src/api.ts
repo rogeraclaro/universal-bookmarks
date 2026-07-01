@@ -6,7 +6,7 @@ export async function callAICategorize(data: {
   title: string;
   description: string;
   categories: string[];
-}): Promise<{ categories: string[]; title?: string; description?: string }> {
+}): Promise<{ categories: string[]; title?: string; description?: string; resolvedUrl?: string }> {
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}/categorize`, {
       method: 'POST',

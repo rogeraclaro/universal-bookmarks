@@ -222,6 +222,9 @@ export default function Popup() {
       }
       // If valid is empty: leave selectedCategories as [] — user selects manually
 
+      if (aiResult.title) setTitle(aiResult.title);
+      if (aiResult.description) setDescription(aiResult.description);
+
       setViewState('form');
     } catch (err) {
       console.error('Error loading data:', err);
