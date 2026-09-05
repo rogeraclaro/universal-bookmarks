@@ -38,6 +38,7 @@ export const UI_STRINGS = {
   DUPLICATE_MESSAGE: "Aquesta pàgina ja està guardada a la teva col·lecció.",
   NEW_CATEGORY_PLACEHOLDER: "Nova categoria...",
   ADD_CATEGORY: "Afegir",
+  AI_FAILED_WARNING: "⚠️ La IA no ha pogut classificar aquest enllaç. Revisa el títol i tria la categoria manualment.",
 
   // Tabs feature strings (Catalan)
   TABS_HEADING: "Pestanyes Obertes",

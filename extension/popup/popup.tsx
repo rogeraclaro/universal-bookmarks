@@ -28,6 +28,7 @@ export default function Popup() {
   const [error, setError] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
+  const [aiFailed, setAiFailed] = useState(false);
 
   // Tabs feature state
   const [tabs, setTabs] = useState<TabItem[]>([]);
@@ -224,6 +225,7 @@ export default function Popup() {
 
       if (aiResult.title) setTitle(aiResult.title);
       if (aiResult.description) setDescription(aiResult.description);
+      setAiFailed(!!aiResult.error);
 
       setViewState('form');
     } catch (err) {
@@ -392,7 +394,7 @@ export default function Popup() {
           title: aiResult.title || tab.title,
           description: aiResult.description || '',
         });
-        setTabCatStatuses(prev => new Map(prev).set(tab.id, 'done'));
+        setTabCatStatuses(prev => new Map(prev).set(tab.id, aiResult.error ? 'failed' : 'done'));
       } catch {
         reviewCats.set(tab.id, ['Altres']);
         reviewMeta.set(tab.id, { title: tab.title, description: '' });
@@ -890,6 +892,13 @@ export default function Popup() {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* AI failure warning */}
+        {aiFailed && (
+          <div className="bg-yellow-100 border-2 border-yellow-500 p-2 text-yellow-900 text-sm font-mono">
+            {UI_STRINGS.AI_FAILED_WARNING}
+          </div>
+        )}
+
         {/* Title */}
         <div>
           <label className="block font-bold text-sm mb-1">📄 {UI_STRINGS.LABEL_TITLE}</label>

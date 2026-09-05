@@ -58,9 +58,14 @@ app.get('/categories', (req, res) => {
     res.json({ data: db.categories || [] });
 });
 
+// Merge instead of replace: a client with a stale/partial category list
+// (e.g. falling back to defaults after a fetch error) must never wipe out
+// categories other clients already added.
 app.post('/categories', (req, res) => {
     const { data } = req.body;
-    writeDB({ categories: data });
+    const db = readDB();
+    const merged = Array.from(new Set([...(db.categories || []), ...(data || [])])).sort();
+    writeDB({ categories: merged });
     res.json({ success: true });
 });
 
@@ -87,7 +92,7 @@ function callGroq(messages, timeoutMs = 30000) {
     if (!apiKey) throw new Error('GROQ_API_KEY not set');
 
     const body = JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         messages,
         response_format: { type: 'json_object' },
         temperature: 0.2,
@@ -223,7 +228,7 @@ app.post('/categorize', async (req, res) => {
 
     if (!process.env.GROQ_API_KEY) {
         console.error('[categorize] GROQ_API_KEY not set');
-        return res.json({ categories: [], title: '', description: '' });
+        return res.json({ categories: [], title: '', description: '', error: true });
     }
 
     // X app shares only give a t.co shortened link — resolve it to the real
@@ -277,7 +282,7 @@ Títol original: ${title || ''}`;
 
         if (groqRes.status !== 200) {
             console.error('[categorize] Groq error:', groqRes.status, groqRes.body.slice(0, 200));
-            return res.json({ categories: [], title: '', description: '' });
+            return res.json({ categories: [], title: '', description: '', error: true });
         }
 
         const data = JSON.parse(groqRes.body);
@@ -291,7 +296,7 @@ Títol original: ${title || ''}`;
         });
     } catch (err) {
         console.error('[categorize] failed:', err.message);
-        res.json({ categories: [], title: '', description: '' });
+        res.json({ categories: [], title: '', description: '', error: true });
     }
 });
 

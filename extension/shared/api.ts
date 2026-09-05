@@ -104,7 +104,7 @@ export async function callClaudeProxy(data: {
   title: string;
   description: string;
   categories?: string[];
-}): Promise<{ categories: string[]; title?: string; description?: string }> {
+}): Promise<{ categories: string[]; title?: string; description?: string; error?: boolean }> {
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}/categorize`, {
       method: 'POST',
@@ -112,9 +112,9 @@ export async function callClaudeProxy(data: {
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(30000),
     });
-    if (!response.ok) return { categories: [] };
+    if (!response.ok) return { categories: [], error: true };
     return await response.json();
   } catch {
-    return { categories: [] };
+    return { categories: [], error: true };
   }
 }
