@@ -221,7 +221,7 @@ http://ailinksdb.masellas.info
 1. **Pujar un JSON de Twitter:**
    - Clica el botó de pujada
    - Selecciona un fitxer JSON
-   - Hauria de processar els tweets amb Gemini
+   - Hauria de processar els tweets amb DeepSeek (via el backend)
 
 2. **Verificar que es guarda al servidor:**
    - Els bookmarks es guarden al VPS (db.json)
@@ -265,7 +265,7 @@ pm2 restart ai-bookmarks
 **Solució:**
 ```bash
 # Verifica que el backend està funcionant
-curl http://localhost:3002/bookmarks -H "x-api-secret: [REDACTED-API-SECRET]"
+curl http://localhost:3002/bookmarks -H "x-api-secret: $API_SECRET"
 
 # Verifica el firewall
 ufw status
@@ -285,13 +285,14 @@ ls -lah /home/masellas-ailinksdb/htdocs/ailinksdb.masellas.info
 chmod -R 755 /home/masellas-ailinksdb/htdocs/ailinksdb.masellas.info
 ```
 
-### La pàgina carrega però no funciona Gemini
+### La pàgina carrega però no funciona la IA
 
-**Problema:** API Key de Gemini no està configurada
+**Problema:** `DEEPSEEK_API_KEY` o `API_SECRET` no estan configurades al backend
 
 **Solució:**
-- La clau està al frontend (compilada al build)
-- Si canvies la clau, has de fer `npm run build` i tornar a pujar
+- La clau de DeepSeek viu NOMÉS al `.env` del servidor (mai en variables `VITE_*`)
+- El backend no arrenca sense `API_SECRET`; el frontend ha de tenir `VITE_STORAGE_SECRET` amb el mateix valor (compilat al build)
+- Si canvies el `.env` del servidor, reinicia el procés PM2; si canvies `VITE_STORAGE_SECRET`, fes `npm run build` i torna a pujar
 
 ### No puc accedir des d'un altre dispositiu
 

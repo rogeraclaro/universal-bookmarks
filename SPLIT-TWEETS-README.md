@@ -1,3 +1,5 @@
+> ⚠️ Document històric: aquest text descriu l'època Gemini. Actualment s'usa DeepSeek (`deepseek-flash`). Vegeu README.md.
+
 # 📦 Script per dividir tweets en lots
 
 ## 🎯 Què fa aquest script?

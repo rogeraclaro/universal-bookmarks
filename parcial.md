@@ -1,3 +1,5 @@
+> ⚠️ Document històric: aquest text descriu l'època Gemini. Actualment s'usa DeepSeek (`deepseek-flash`). Vegeu README.md.
+
 # Resum de Canvis - Sessió Parcial
 
 **Data:** 6 de desembre de 2025
@@ -610,8 +612,8 @@ Distingeix entre modes amb `tweetsToEdit.length > 0`:
 - **Domain:** https://ailinksdb.masellas.info
 - **Backend:** `/home/masellas-ailinksdb/backend/` (PM2, port 3002)
 - **Frontend:** `/home/masellas-ailinksdb/htdocs/ailinksdb.masellas.info/`
-- **Gemini API Key:** `[REDACTED-GEMINI-KEY]`
-- **Storage Secret:** `[REDACTED-API-SECRET]`
+- **Gemini API Key:** `[REDACTED]`
+- **Storage Secret:** `[REDACTED]`
 
 ---
 

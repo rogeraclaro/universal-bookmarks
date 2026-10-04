@@ -26,7 +26,7 @@
 
 ## Descripció del Projecte
 
-AI Bookmark Manager és una aplicació web desenvolupada inicialment amb Google AI Studio que permet gestionar i organitzar els bookmarks/preferits exportats des de Twitter (X). L'aplicació utilitza Intel·ligència Artificial (Google Gemini) per analitzar, categoritzar i titular automàticament els tweets relacionats amb IA.
+AI Bookmark Manager és una aplicació web desenvolupada inicialment amb Google AI Studio que permet gestionar i organitzar els bookmarks/preferits exportats des de Twitter (X). L'aplicació utilitza Intel·ligència Artificial (DeepSeek, via el backend) per analitzar, categoritzar i titular automàticament els tweets relacionats amb IA.
 
 ### Objectiu Principal
 
@@ -40,7 +40,7 @@ Facilitar l'organització de bookmarks de Twitter relacionats amb Intel·ligènc
 ### Funcionalitats Clau
 
 1. **Import de JSON:** Lectura de fitxers JSON exportats des de Twitter
-2. **Processament amb IA:** Anàlisi automàtic amb Google Gemini per:
+2. **Processament amb IA:** Anàlisi automàtic amb DeepSeek (model `deepseek-flash`, via el backend) per:
    - Determinar si el tweet és relacionat amb IA
    - Generar un títol descriptiu en català
    - Assignar una categoria apropiada
@@ -71,7 +71,7 @@ Facilitar l'organització de bookmarks de Twitter relacionats amb Intel·ligènc
 - **Build Tool:** Vite 7.2.4
 - **Estils:** Tailwind CSS
 - **Icones:** Lucide React
-- **IA:** Google Generative AI SDK (@google/genai 1.30.0)
+- **IA:** DeepSeek V4.1 Flash (`deepseek-flash`), cridat des del backend (cap SDK d'IA al frontend)
 
 #### Backend (VPS)
 - **Runtime:** Node.js
@@ -86,7 +86,7 @@ Facilitar l'organització de bookmarks de Twitter relacionats amb Intel·ligènc
 │                    Frontend (React)                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
 │  │   App.tsx    │  │ UI Components│  │  Services    │  │
-│  │  (Control)   │→ │  (Brutalist) │  │  - Gemini    │  │
+│  │  (Control)   │→ │  (Brutalist) │  │  - AI client │  │
 │  │              │  │              │  │  - Storage   │  │
 │  └──────────────┘  └──────────────┘  └──────────────┘  │
 └─────────────────────────────────────────────────────────┘
@@ -125,7 +125,7 @@ ai-bookmarks/
 │   ├── components/
 │   │   └── UI.tsx      # Components UI reutilitzables (brutalista)
 │   ├── services/
-│   │   ├── geminiService.ts   # Integració amb Gemini AI
+│   │   ├── claudeService.ts   # Client del backend /process-tweet (IA: DeepSeek)
 │   │   └── storage.ts         # Capa d'abstracció d'emmagatzematge
 │   ├── App.tsx         # Component principal (890 línies)
 │   ├── main.tsx        # Punt d'entrada React
@@ -145,7 +145,6 @@ ai-bookmarks/
 
 #### .env
 ```env
-VITE_API_KEY=
 VITE_STORAGE_API_URL=
 VITE_STORAGE_SECRET=
 ```
@@ -175,7 +174,7 @@ VITE_STORAGE_SECRET=
 - Gestió centralitzada d'estat
 - Orquestració de la UI (layout, modals, navegació)
 - Lògica d'import/export de dades
-- Processament de tweets amb Gemini
+- Processament de tweets amb IA (DeepSeek via backend)
 - Sistema de logging i progrés
 
 **Estat Principal:**
@@ -212,10 +211,10 @@ resultsModalState: { added, skipped, rejected, show }  // Resum import
 2. **processTweetsData()**
    - Extreu tweets del JSON de Twitter
    - Deduplica contra bookmarks existents i deletedIds
-   - Crida processBookmarksWithGemini()
+   - Crida processBookmarksWithClaude()
 
-3. **processBookmarksWithGemini()**
-   - Processa tweets amb Gemini (1 a 1)
+3. **processBookmarksWithClaude()**
+   - Processa tweets amb la IA (1 a 1, via backend)
    - Gestiona rate limiting (4s entre requests)
    - Retry amb exponential backoff en errors 429
    - Separa tweets IA vs no-IA
@@ -231,23 +230,19 @@ resultsModalState: { added, skipped, rejected, show }  // Resum import
    - Inclou metadata (versió, timestamp)
    - Descarrega com a fitxer
 
-### 2. geminiService.ts - Integració IA
+### 2. claudeService.ts - Integració IA (client del backend)
 
 **Configuració:**
-```typescript
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash-exp",
-  generationConfig: {
-    responseMimeType: "application/json",
-    responseSchema: ProcessedTweetResultSchema,
-    maxOutputTokens: 500  // Prevenir loops infinits
-  }
-})
-```
+
+El frontend NO crida cap proveïdor d'IA directament: fa `POST /process-tweet` al backend (`x-api-secret: VITE_STORAGE_SECRET`).
+El backend (`backend/server.js`, PM2 app `links`, port 3003, `links.masellas.info`) crida DeepSeek V4.1 Flash
+(model `deepseek-flash`, `api.deepseek.com/chat/completions`) mitjançant `callLLM()`, amb la clau `DEEPSEEK_API_KEY`
+del `.env` del servidor. La mateixa IA genera categories (`/categorize`) i textos/títols/resums (`/process-tweet`).
+El servidor llegeix `API_SECRET` del `.env` i no arrenca sense ell.
 
 **Funcions:**
 
-1. **processBookmarksWithGemini(tweets, onProgress, onLog)**
+1. **processBookmarksWithClaude(tweets, onProgress, onLog)**
    - Batch processing: itera tweets 1 a 1
    - Trunca text a 1000 chars per request
    - Crida generateContent() amb system instruction
@@ -401,10 +396,10 @@ active: translate(0, 0) + shadow-[0px_0px_0px_0px_#000]
                      └──────────┬───────────────────┘
                                 ↓
                      ┌──────────────────────────────┐
-                     │ 4. processBookmarksWithGemini│
+                     │ 4. processBookmarksWithClaude│
                      │ FOR EACH tweet:              │
                      │   - Truncate 1000 chars      │
-                     │   - Call Gemini API          │
+                     │   - Call /process-tweet       │
                      │   - Wait 4s (rate limit)     │
                      │   - Retry if 429 error       │
                      │   - Parse JSON response      │
@@ -514,19 +509,11 @@ MOLT IMPORTANT:
 
 ### Model i Configuració
 
-**Model:** Gemini 2.0 Flash Experimental
+**Model:** DeepSeek V4.1 Flash (`deepseek-flash`, via el backend)
 - Ràpid i econòmic (ideal per batch processing)
-- Suporta JSON schema enforced
-- 15 RPM en tier gratuït
-
-**GenerationConfig:**
-```typescript
-{
-  responseMimeType: "application/json",
-  responseSchema: ProcessedTweetResultSchema,
-  maxOutputTokens: 500  // Prevenir loops infinits
-}
-```
+- Resposta JSON validada pel backend
+- Clau `DEEPSEEK_API_KEY` només al `.env` del servidor (mai en variables `VITE_*`)
+- Històricament: Gemini, i després Groq `openai/gpt-oss-20b` (obsolets)
 
 ### Esquema de Validació
 
@@ -653,7 +640,7 @@ function processTweetsData(tweetsData: TweetRaw[]) {
   addLog('info', `${uniqueTweets.length} tweets nous (${skippedCount} duplicats ignorats)`)
 
   // 5. Processar només tweets únics
-  await processBookmarksWithGemini(uniqueTweets, ...)
+  await processBookmarksWithClaude(uniqueTweets, ...)
 }
 ```
 
@@ -1280,7 +1267,7 @@ pm2 monit
 **Testing endpoint:**
 ```bash
 # GET bookmarks
-curl -H "x-api-secret: [REDACTED-API-SECRET]" \
+curl -H "x-api-secret: $API_SECRET" \
      http://62.169.25.188:3002/bookmarks
 
 # POST bookmark
@@ -1339,11 +1326,11 @@ interface TweetRaw {
 ```typescript
 interface Bookmark {
   id: string                // ID únic: {tweetId}-{random}
-  title: string             // Títol generat per Gemini (català)
+  title: string             // Títol generat per la IA (català)
   description: string       // Text original (max 280 chars)
   author: string            // @username o nom display
   originalLink: string      // URL tweet: twitter.com/i/web/status/{id}
-  externalLinks: string[]   // URLs extrets per Gemini
+  externalLinks: string[]   // URLs extrets per la IA
   category: string          // Categoria assignada
   createdAt: number         // Timestamp Unix (ms)
 }
@@ -1363,7 +1350,7 @@ interface Bookmark {
 }
 ```
 
-**3. ProcessedTweetResult - Resposta Gemini**
+**3. ProcessedTweetResult - Resposta IA**
 ```typescript
 interface ProcessedTweetResult {
   originalId: string        // ID del tweet processat
@@ -1632,15 +1619,15 @@ function createBookmark(tweet: TweetRaw, aiResult: ProcessedTweetResult): Bookma
 
 ### 4. Rate Limiting Intel·ligent
 
-**Problema:** Gemini Free Tier = 15 RPM (requests per minute)
+**Problema:** Evitar sobrecarregar el backend i el proveïdor d'IA (requests per minut)
 
 **Solució Implementada:**
 
 ```typescript
 // 1. Delay base entre requests
-const BASE_DELAY = 4000  // 4 segons = ~15 RPM
+const BASE_DELAY = 4000  // 4 segons entre requests (exemple)
 
-async function processBookmarksWithGemini(tweets) {
+async function processBookmarksWithClaude(tweets) {
   for (let i = 0; i < tweets.length; i++) {
     try {
       // Process tweet
@@ -1827,10 +1814,11 @@ npm install
 
 **2. Configuració .env:**
 ```env
-VITE_API_KEY=<gemini-api-key>
 VITE_STORAGE_API_URL=http://xxx.xxx.xxx.xxx:xxxx
-VITE_STORAGE_SECRET=xxxx
+VITE_STORAGE_SECRET=xxxx   # mateix valor que API_SECRET del backend
 ```
+La clau de DeepSeek (`DEEPSEEK_API_KEY`) només va al `.env` del backend, mai en variables `VITE_*`.
+L'extensió i el mòbil llegeixen `VITE_API_SECRET` (de `extension/.env.local` i `mobile/.env.local`, ignorats per git).
 
 **3. Executar dev server:**
 ```bash
@@ -1841,7 +1829,7 @@ npm run dev
 **4. Verificar:**
 - Frontend carrega correctament
 - Pot importar JSON de Twitter
-- Gemini processa tweets (API key vàlida)
+- La IA processa tweets (el backend té `DEEPSEEK_API_KEY` vàlida)
 - Storage funciona (local o API segons .env)
 
 ### Build de Producció
@@ -1887,7 +1875,6 @@ cd ai-bookmarks
 vercel
 
 # Configurar variables d'entorn a Vercel dashboard:
-# VITE_API_KEY
 # VITE_STORAGE_API_URL
 # VITE_STORAGE_SECRET
 ```
@@ -1969,15 +1956,14 @@ Resum:
 
 **Frontend (.env.production):**
 ```env
-VITE_API_KEY=<production-gemini-key>
 VITE_STORAGE_API_URL=https://api.bookmarks.example.com
 VITE_STORAGE_SECRET=<strong-random-secret>
 ```
 
-**Backend (server.js):**
-```javascript
-const API_SECRET = process.env.API_SECRET || 'default-secret'
-const PORT = process.env.PORT || 3002
+**Backend (.env del servidor):**
+```env
+API_SECRET=<strong-random-secret>   # el servidor no arrenca sense ell
+DEEPSEEK_API_KEY=<deepseek-key>     # només al backend
 ```
 
 **Recomanacions:**
@@ -2013,7 +1999,6 @@ jobs:
 
       - name: Build
         env:
-          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
           VITE_STORAGE_API_URL: ${{ secrets.VITE_STORAGE_API_URL }}
           VITE_STORAGE_SECRET: ${{ secrets.VITE_STORAGE_SECRET }}
         run: npm run build
@@ -2127,9 +2112,9 @@ jobs:
    - Last-write-wins en updates simultanis
    - No hi ha versionat o merge automàtic
 
-3. **Limits de Gemini:**
-   - 15 RPM en free tier (lent per imports grans)
-   - Pot requerir API key de pagament per ús intens
+3. **Límits de la IA (DeepSeek):**
+   - Processament seqüencial (1 tweet cada ~2s), lent per imports grans
+   - Cal una clau DeepSeek vàlida (`DEEPSEEK_API_KEY`) al backend
 
 4. **Storage Limitat:**
    - LocalStorage: ~10MB max
@@ -2144,7 +2129,7 @@ jobs:
 
 1. **Imports Grans:**
    - Dividir fitxers JSON en batches de <100 tweets
-   - Executar imports fora d'hores punta (Gemini rate limits)
+   - Executar imports fora d'hores punta (rate limits de la IA)
 
 2. **Backups:**
    - Exportar backup setmanalment
@@ -2237,7 +2222,7 @@ x-api-secret: xxxxx
 - Verificar firewall permet port 3002: `sudo ufw status`
 - Comprovar VITE_STORAGE_API_URL al .env
 
-**2. Gemini API error 429:**
+**2. Error 429 de la IA (DeepSeek):**
 - Esperar uns minuts (rate limit temporal)
 - Reduir velocitat d'imports (augmentar BASE_DELAY)
 - Considerar upgrade a tier de pagament

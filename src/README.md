@@ -15,6 +15,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/1E9NYnblfrQW0f7M3i25c7p
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set `VITE_STORAGE_SECRET` in [.env.local](.env.local) to the backend's `API_SECRET` (AI calls go through the backend, which uses DeepSeek via `DEEPSEEK_API_KEY` in the server's `.env`; never put the DeepSeek key in a `VITE_*` variable)
 3. Run the app:
    `npm run dev`

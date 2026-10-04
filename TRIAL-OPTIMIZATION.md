@@ -1,3 +1,5 @@
+> ⚠️ Document històric: aquest text descriu l'època Gemini. Actualment s'usa DeepSeek (`deepseek-flash`). Vegeu README.md.
+
 # 🚀 Optimització per Trial de Google Cloud (90 dies)
 
 ## 📅 Dates del Trial
