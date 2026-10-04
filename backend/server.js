@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = 3003;
@@ -32,17 +33,74 @@ const checkAuth = (req, res, next) => {
 app.use(checkAuth);
 
 // Helper DB functions
-const readDB = () => {
-    if (!fs.existsSync(DB_FILE)) {
-        return { bookmarks: [], categories: [], deletedIds: [] };
+const BACKUP_FILE = `${DB_FILE}.bak`;
+const emptyDB = () => ({ bookmarks: [], categories: [], deletedIds: [] });
+
+// Write to a temp file, fsync, then rename: rename is atomic on the same filesystem, so a crash
+// can never leave a half-written db.json. The previous good copy is kept as db.json.bak.
+const atomicWrite = (data, { backup = true } = {}) => {
+    const tmp = `${DB_FILE}.tmp-${process.pid}`;
+    const fd = fs.openSync(tmp, 'w');
+    try {
+        fs.writeFileSync(fd, JSON.stringify(data, null, 2));
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
     }
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    if (backup && fs.existsSync(DB_FILE)) {
+        fs.copyFileSync(DB_FILE, `${BACKUP_FILE}.tmp`);
+        fs.renameSync(`${BACKUP_FILE}.tmp`, BACKUP_FILE);
+    }
+    // rename swaps the inode, so keep the owner/mode of the existing file (other users/scripts rely on them)
+    if (fs.existsSync(DB_FILE)) {
+        const { mode, uid, gid } = fs.statSync(DB_FILE);
+        fs.chmodSync(tmp, mode & 0o777);
+        try { fs.chownSync(tmp, uid, gid); } catch { /* not root: keep the current owner */ }
+    }
+    fs.renameSync(tmp, DB_FILE);
+};
+
+// If db.json is unreadable (truncated by an old crash, hand edit...), fall back to the last good
+// backup instead of failing every request. The broken file is kept aside for inspection.
+const readDB = () => {
+    if (!fs.existsSync(DB_FILE)) return emptyDB();
+    try {
+        return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    } catch (err) {
+        console.error('[db] db.json unreadable:', err.message);
+        if (!fs.existsSync(BACKUP_FILE)) throw err;
+        const recovered = JSON.parse(fs.readFileSync(BACKUP_FILE, 'utf8'));
+        fs.copyFileSync(DB_FILE, `${DB_FILE}.corrupt-${Date.now()}`);
+        atomicWrite(recovered, { backup: false });
+        console.error('[db] recovered from db.json.bak');
+        return recovered;
+    }
 };
 
 const writeDB = (data) => {
-    const current = readDB();
-    const newData = { ...current, ...data };
-    fs.writeFileSync(DB_FILE, JSON.stringify(newData, null, 2));
+    atomicWrite({ ...readDB(), ...data });
+};
+
+// --- BOOKMARK OPERATIONS (pure, operate on an array and return a new one) ---
+
+const isValidNewBookmark = (b) =>
+    !!b && typeof b.originalLink === 'string' && b.originalLink.trim() !== '' && typeof b.title === 'string';
+
+// Adds one bookmark unless its originalLink is already present (idempotent for retries).
+const addBookmark = (list, incoming) => {
+    const existing = list.find((b) => b.originalLink === incoming.originalLink);
+    if (existing) return { list, id: existing.id, duplicate: true };
+    const idTaken = typeof incoming.id === 'string' && list.some((b) => b.id === incoming.id);
+    const bookmark = {
+        description: '',
+        author: '',
+        externalLinks: [],
+        categories: [],
+        ...incoming,
+        id: typeof incoming.id === 'string' && incoming.id && !idTaken ? incoming.id : crypto.randomUUID(),
+        createdAt: Number.isFinite(incoming.createdAt) ? incoming.createdAt : Date.now(),
+    };
+    return { list: [...list, bookmark], id: bookmark.id, duplicate: false };
 };
 
 // --- ENDPOINTS DADES ---
@@ -52,10 +110,88 @@ app.get('/bookmarks', (req, res) => {
     res.json({ data: db.bookmarks || [] });
 });
 
+// LEGACY replace-all endpoint, kept so old cached clients do not break. It is now UPSERT-ONLY:
+// bookmarks it sends are added/updated by id, but bookmarks it does NOT send are never removed.
+// A stale tab or old client can therefore no longer wipe what other clients saved. Deletions go
+// through POST /bookmarks/ops.
 app.post('/bookmarks', (req, res) => {
     const { data } = req.body;
-    writeDB({ bookmarks: data });
+    if (!Array.isArray(data)) {
+        return res.status(400).json({ error: 'data must be an array' });
+    }
+    const stored = readDB().bookmarks || [];
+    const sent = new Map(data.filter((b) => b && typeof b.id === 'string').map((b) => [b.id, b]));
+    const storedIds = new Set(stored.map((b) => b.id));
+    const merged = [
+        ...stored.map((b) => (sent.has(b.id) ? sent.get(b.id) : b)),
+        ...[...sent.values()].filter((b) => !storedIds.has(b.id)),
+    ];
+    console.warn(`[bookmarks] legacy POST /bookmarks (upsert only): sent=${data.length} stored=${stored.length} now=${merged.length}`);
+    writeDB({ bookmarks: merged });
     res.json({ success: true });
+});
+
+// Append ONE bookmark without the client having to send (and risk overwriting) the whole list.
+// readDB/writeDB are synchronous, so this read-modify-write cannot interleave with another
+// request handled by this process. Idempotent: a repeated originalLink is not added twice.
+app.post('/bookmarks/add', (req, res) => {
+    const incoming = req.body && req.body.bookmark;
+    if (!isValidNewBookmark(incoming)) {
+        return res.status(400).json({ error: 'bookmark.originalLink and bookmark.title are required' });
+    }
+    const result = addBookmark(readDB().bookmarks || [], incoming);
+    if (!result.duplicate) writeDB({ bookmarks: result.list });
+    res.status(result.duplicate ? 200 : 201).json({ success: true, duplicate: result.duplicate, id: result.id });
+});
+
+// Apply several changes atomically in ONE read-modify-write: { add: [bookmark], update: [{id, ...fields}],
+// remove: [id] }. Only the bookmarks named here are touched; everything else is left as stored.
+app.post('/bookmarks/ops', (req, res) => {
+    const { add = [], update = [], remove = [], force = false } = req.body || {};
+    if (![add, update, remove].every(Array.isArray)) {
+        return res.status(400).json({ error: 'add, update and remove must be arrays' });
+    }
+    if (!add.every(isValidNewBookmark)
+        || !update.every((u) => u && typeof u.id === 'string')
+        || !remove.every((id) => typeof id === 'string')) {
+        return res.status(400).json({ error: 'invalid add/update/remove entry' });
+    }
+    let list = readDB().bookmarks || [];
+    // Seatbelt against a client bug (e.g. one that believes the list is empty): removing more than
+    // 10 bookmarks AND more than 30% of the stored list must be explicitly confirmed with force:true.
+    if (force !== true && remove.length > 10 && remove.length > list.length * 0.3) {
+        return res.status(409).json({
+            error: `refusing to remove ${remove.length} of ${list.length} bookmarks without force:true`,
+        });
+    }
+    const removeIds = new Set(remove);
+    const before = list.length;
+    list = list.filter((b) => !removeIds.has(b.id));
+    const removed = before - list.length;
+
+    let updated = 0;
+    let missing = 0;
+    for (const change of update) {
+        const index = list.findIndex((b) => b.id === change.id);
+        if (index === -1) {
+            missing++;
+            continue;
+        }
+        list = list.map((b, i) => (i === index ? { ...b, ...change, id: b.id } : b));
+        updated++;
+    }
+
+    let added = 0;
+    let duplicates = 0;
+    for (const bookmark of add) {
+        const result = addBookmark(list, bookmark);
+        list = result.list;
+        if (result.duplicate) duplicates++;
+        else added++;
+    }
+
+    if (added || updated || removed) writeDB({ bookmarks: list });
+    res.json({ success: true, added, updated, removed, duplicates, missing });
 });
 
 app.get('/categories', (req, res) => {
@@ -79,14 +215,22 @@ app.get('/deleted', (req, res) => {
     res.json({ data: db.deletedIds || [] });
 });
 
+// Merge instead of replace (same reason as /categories): a stale client must not drop ids that
+// other clients blacklisted. The only way to clear everything is the explicit /reset below.
+// replace:true is the explicit "clear / overwrite the blacklist" intent (used by the web app's reset).
 app.post('/deleted', (req, res) => {
-    const { data } = req.body;
-    writeDB({ deletedIds: data });
+    const { data, replace } = req.body;
+    const db = readDB();
+    const ids = replace === true
+        ? (data || [])
+        : Array.from(new Set([...(db.deletedIds || []), ...(data || [])]));
+    writeDB({ deletedIds: ids });
     res.json({ success: true });
 });
 
+// Explicit "wipe everything" (the web app asks the user to confirm). The previous state stays in db.json.bak.
 app.post('/reset', (req, res) => {
-    fs.writeFileSync(DB_FILE, JSON.stringify({ bookmarks: [], categories: [], deletedIds: [] }));
+    atomicWrite(emptyDB());
     res.json({ success: true });
 });
 
