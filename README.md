@@ -885,32 +885,64 @@ const API_SECRET = import.meta.env.VITE_STORAGE_SECRET
 
 ```
 
+**URL base:** `https://links.masellas.info/api` (nginx la reenvia al backend, PM2 app `links`, port intern 3003)
+
 **Endpoints:**
 
-| Endpoint        | Mètode | Descripció                         | Auth |
-|-----------------|--------|------------------------------------|------|
-| `/bookmarks`    | GET    | Obté tots els bookmarks            | ✓    |
-| `/bookmarks`    | POST   | Guarda array de bookmarks          | ✓    |
-| `/categories`   | GET    | Obté llista de categories          | ✓    |
-| `/categories`   | POST   | Guarda array de categories         | ✓    |
-| `/deleted`      | GET    | Obté IDs eliminats                 | ✓    |
-| `/deleted`      | POST   | Guarda array d'IDs eliminats       | ✓    |
-| `/reset`        | POST   | Esborra totes les dades            | ✓    |
+| Endpoint         | Mètode | Descripció                                                       | Auth |
+|------------------|--------|------------------------------------------------------------------|------|
+| `/bookmarks`     | GET    | Obté tots els bookmarks (`{data: Bookmark[]}`)                   | ✓    |
+| `/bookmarks/add` | POST   | **Desa UN bookmark.** Idempotent per `originalLink`              | ✓    |
+| `/bookmarks/ops` | POST   | Aplica afegir / editar / esborrar en una sola operació atòmica   | ✓    |
+| `/bookmarks`     | POST   | **Legacy.** Només *upsert* per `id`: mai esborra res             | ✓    |
+| `/categories`    | GET    | Obté llista de categories                                        | ✓    |
+| `/categories`    | POST   | Fusiona (merge) les categories enviades amb les existents        | ✓    |
+| `/deleted`       | GET    | Obté IDs eliminats                                               | ✓    |
+| `/deleted`       | POST   | Fusiona els IDs; amb `replace: true` els sobreescriu             | ✓    |
+| `/reset`         | POST   | Esborra totes les dades (l'estat anterior queda a `db.json.bak`) | ✓    |
+| `/categorize`    | POST   | IA: títol, resum i categories d'un enllaç                        | ✓    |
+| `/process-tweet` | POST   | IA: processa un tweet                                            | ✓    |
 
-**Format Request:**
+**Desar UN bookmark:**
 ```http
-POST /bookmarks HTTP/1.1
-Host: xxx.xxx.xxx.xxx:xxxx
+POST /bookmarks/add HTTP/1.1
+Host: links.masellas.info
 Content-Type: application/json
-x-api-secret: XXXXXXXXXXXXXX
+x-api-secret: $API_SECRET
 
 {
-  "data": [
-    { "id": "...", "title": "...", ... },
-    { "id": "...", "title": "...", ... }
-  ]
+  "bookmark": {
+    "title": "Títol del bookmark",
+    "originalLink": "https://exemple.com/pagina",
+    "description": "opcional",
+    "categories": ["Eines"]
+  }
 }
 ```
+
+Només calen `title` i `originalLink`. Si falten, el servidor omple `id` (UUID), `createdAt`, `author`, `description`, `externalLinks` i `categories`.
+
+| Resposta                              | Significat |
+|---------------------------------------|------------|
+| `201 {success, duplicate: false, id}` | Afegit |
+| `200 {success, duplicate: true, id}`  | Ja existia un bookmark amb aquest `originalLink`: no es duplica (els reintents són segurs) |
+| `400 {error}`                         | Falta `bookmark.title` o `bookmark.originalLink` |
+| `403`                                 | Falta o és incorrecte `x-api-secret` |
+
+**Canvis en lot** (el web envia només el que ha canviat):
+```http
+POST /bookmarks/ops HTTP/1.1
+x-api-secret: $API_SECRET
+Content-Type: application/json
+
+{
+  "add":    [{ "title": "...", "originalLink": "https://..." }],
+  "update": [{ "id": "abc", "title": "Nou títol", "categories": ["RAG"] }],
+  "remove": ["id-a-esborrar"]
+}
+```
+
+Resposta: `{success, added, updated, removed, duplicates, missing}`. Només es toquen els bookmarks esmentats; la resta queda com està. `id` mai canvia en un `update`. Esborrar de cop més de 10 bookmarks **i** més del 30% de la llista és rebutjat amb `409` tret que s'enviï `"force": true`.
 
 **Format Response:**
 ```json
@@ -985,31 +1017,26 @@ app.use(checkAuth)  // Aplicat a tots els endpoints
 - Rate limiting per IP
 - Hashing de secrets
 
-### Race Conditions
+### Concurrència i seguretat de dades
 
-**Problema Potencial:**
-Dos dispositius actualitzen simultàniament:
+**El problema original:** el protocol era "llegeix-ho tot, reescriu-ho tot" (`POST /bookmarks` reemplaçava tota la llista). Una pestanya antiga o dos dispositius alhora podien esborrar el que l'altre havia desat.
 
-```
-Temps    | Dispositiu A          | Dispositiu B
----------|----------------------|----------------------
-T0       | GET /bookmarks       | GET /bookmarks
-         | → [b1, b2, b3]       | → [b1, b2, b3]
-T1       | Afegir b4            | Afegir b5
-T2       | POST [b1,b2,b3,b4]   | POST [b1,b2,b3,b5]
-T3       | ✅ Guardat           | ✅ Guardat (SOBREESCRIU)
-Result   | b4 ES PERD!          | Només b5 queda
-```
+**Com està resolt:**
+- **Operacions per bookmark.** Afegir (`/bookmarks/add`), editar i esborrar (`/bookmarks/ops`) només toquen els bookmarks esmentats. Cada operació es llegeix, s'aplica i s'escriu de manera síncrona dins d'una sola petició, així que dues peticions simultànies no es trepitgen.
+- **`POST /bookmarks` ja no reemplaça res.** Es manté per no trencar clients antics en caché, però només fa *upsert* per `id`: mai esborra el que no envia.
+- **Guarda contra esborrats massius.** `ops` rebutja (409) esborrar més de 10 bookmarks i més del 30% de la llista sense `force: true`.
+- **Web:** només envia la diferència respecte a l'última llista que ha adoptat, i només després d'haver-la carregat sencera (`storage.markLoaded`). Si la càrrega falla a mitges, no sincronitza.
+- **`/categories` i `/deleted` fan *merge*** en lloc de reemplaçar.
 
-**Solució Actual:**
-- Última escriptura guanya (last-write-wins)
-- Acceptable per ús personal amb 1 usuari
+**Escriptura del fitxer (`db.json`):**
+- Atòmica: s'escriu a un fitxer temporal, es fa `fsync` i `rename`. Una caiguda mai deixa el fitxer a mitges. Es conserva el propietari i el mode del fitxer.
+- Abans de cada escriptura es guarda l'estat anterior a `db.json.bak`.
+- Si `db.json` no es pot llegir, el servidor es recupera de `db.json.bak` i deixa el fitxer trencat com `db.json.corrupt-<timestamp>`. La recuperació torna a l'estat **anterior a l'última escriptura**.
 
-**Millores Futures:**
-- Timestamps per detectar conflictes
-- Merge automàtic basat en IDs únics
-- Versionat optimista (etags)
-- WebSockets per sync en temps real
+**Límits que queden:**
+- Si dos clients editen el **mateix** bookmark alhora, guanya l'última edició.
+- Una pestanya antiga no veu els canvis dels altres fins que es recarrega, però ja no els pot esborrar.
+- Un esborrat massiu confirmat amb `force: true` (o `/reset`) és irreversible, tret del `db.json.bak` i la còpia diària del VPS.
 
 ---
 
@@ -1020,96 +1047,10 @@ Result   | b4 ES PERD!          | Només b5 queda
 **Ubicació:** `/root/ai-bookmarks-backend/` (o similar al VPS)
 
 **1. server.js**
-```javascript
-const express = require('express')
-const cors = require('cors')
-const fs = require('fs')
-const path = require('path')
 
-const app = express()
-const PORT = 3002
-const DB_FILE = path.join(__dirname, 'db.json')
-const API_SECRET = 'xxxx'
-
-// Middleware
-app.use(cors())  // Permet requests des de qualsevol origen
-app.use(express.json({ limit: '50mb' }))  // Parse JSON + límit gran
-
-// Auth Middleware
-const checkAuth = (req, res, next) => {
-  const secret = req.headers['x-api-secret']
-  if (secret !== API_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' })
-  }
-  next()
-}
-
-app.use(checkAuth)
-
-// Helper functions
-const readDB = () => {
-  if (!fs.existsSync(DB_FILE)) {
-    return { bookmarks: [], categories: [], deletedIds: [] }
-  }
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'))
-}
-
-const writeDB = (data) => {
-  const current = readDB()
-  const newData = { ...current, ...data }
-  fs.writeFileSync(DB_FILE, JSON.stringify(newData, null, 2))
-}
-
-// Endpoints
-app.get('/bookmarks', (req, res) => {
-  const db = readDB()
-  res.json({ data: db.bookmarks || [] })
-})
-
-app.post('/bookmarks', (req, res) => {
-  const { data } = req.body
-  writeDB({ bookmarks: data })
-  res.json({ success: true })
-})
-
-app.get('/categories', (req, res) => {
-  const db = readDB()
-  res.json({ data: db.categories || [] })
-})
-
-app.post('/categories', (req, res) => {
-  const { data } = req.body
-  writeDB({ categories: data })
-  res.json({ success: true })
-})
-
-app.get('/deleted', (req, res) => {
-  const db = readDB()
-  res.json({ data: db.deletedIds || [] })
-})
-
-app.post('/deleted', (req, res) => {
-  const { data } = req.body
-  writeDB({ deletedIds: data })
-  res.json({ success: true })
-})
-
-app.post('/reset', (req, res) => {
-  fs.writeFileSync(
-    DB_FILE,
-    JSON.stringify({
-      bookmarks: [],
-      categories: [],
-      deletedIds: []
-    })
-  )
-  res.json({ success: true })
-})
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
-```
+El codi viu al repositori a `backend/server.js` i es desplega al VPS (`/home/masellas-links/backend/`, PM2 app `links`, port 3003); no es copia aquí perquè es desfasaria. Variables d'entorn al `.env` del servidor:
+- `API_SECRET`: obligatòria. El servidor es nega a arrencar sense.
+- `DEEPSEEK_API_KEY`: clau de la IA (només al backend, mai a `VITE_*`).
 
 **2. package.json**
 ```json
@@ -1257,25 +1198,25 @@ pm2 monit
 
 ### Detalls de Xarxa
 
-**IP Servidor:** 62.169.25.188
-**Port:** 3002
-**Protocol:** HTTP (no HTTPS)
+**Domini:** links.masellas.info (nginx reenvia `/api/` al backend)
+**Port intern:** 3003
+**Protocol:** HTTPS
 **CORS:** Obert a tots els orígens (*)
 
-**URL Completa:** `http://62.169.25.188:3002`
+**URL base de l'API:** `https://links.masellas.info/api`
 
 **Testing endpoint:**
 ```bash
 # GET bookmarks
 curl -H "x-api-secret: $API_SECRET" \
-     http://62.169.25.188:3002/bookmarks
+     https://links.masellas.info/api/bookmarks
 
-# POST bookmark
+# Desar UN bookmark
 curl -X POST \
      -H "Content-Type: application/json" \
-     -H "x-api-secret: xxxxx" \
-     -d '{"data":[{"id":"test","title":"Test"}]}' \
-     http://xxx.xxx.xxx.xxx:xxxx/bookmarks
+     -H "x-api-secret: $API_SECRET" \
+     -d '{"bookmark":{"title":"Test","originalLink":"https://exemple.com"}}' \
+     https://links.masellas.info/api/bookmarks/add
 ```
 
 ---
@@ -2108,9 +2049,10 @@ jobs:
    - Secret compartit simple
    - Sense gestió d'usuaris
 
-2. **Race Conditions:**
-   - Last-write-wins en updates simultanis
-   - No hi ha versionat o merge automàtic
+2. **Concurrència:**
+   - Afegits i esborrats són per bookmark i no es perden (vegeu "Concurrència i seguretat de dades")
+   - Si dos clients editen el mateix bookmark alhora, guanya l'última edició
+   - Una pestanya antiga no veu els canvis dels altres fins que es recarrega
 
 3. **Límits de la IA (DeepSeek):**
    - Processament seqüencial (1 tweet cada ~2s), lent per imports grans
@@ -2200,15 +2142,21 @@ cp db.json db.json.backup-$(date +%Y%m%d)  # Backup manual
 
 ### C. Endpoints API Reference
 
-| Endpoint      | Mètode | Body                | Response             | Auth |
-|---------------|--------|---------------------|----------------------|------|
-| `/bookmarks`  | GET    | -                   | `{data: Bookmark[]}` | ✓    |
-| `/bookmarks`  | POST   | `{data: Bookmark[]}` | `{success: true}`   | ✓    |
-| `/categories` | GET    | -                   | `{data: string[]}`   | ✓    |
-| `/categories` | POST   | `{data: string[]}`  | `{success: true}`   | ✓    |
-| `/deleted`    | GET    | -                   | `{data: string[]}`   | ✓    |
-| `/deleted`    | POST   | `{data: string[]}`  | `{success: true}`   | ✓    |
-| `/reset`      | POST   | -                   | `{success: true}`   | ✓    |
+URL base: `https://links.masellas.info/api`
+
+| Endpoint         | Mètode | Body                                          | Response                                                  | Auth |
+|------------------|--------|-----------------------------------------------|-----------------------------------------------------------|------|
+| `/bookmarks`     | GET    | -                                             | `{data: Bookmark[]}`                                      | ✓    |
+| `/bookmarks/add` | POST   | `{bookmark}`                                  | `{success, duplicate, id}` (201 nou, 200 duplicat)        | ✓    |
+| `/bookmarks/ops` | POST   | `{add?, update?, remove?, force?}`            | `{success, added, updated, removed, duplicates, missing}` | ✓    |
+| `/bookmarks`     | POST   | `{data: Bookmark[]}` (legacy, només *upsert*) | `{success: true}`                                         | ✓    |
+| `/categories`    | GET    | -                                             | `{data: string[]}`                                        | ✓    |
+| `/categories`    | POST   | `{data: string[]}` (merge)                    | `{success: true}`                                         | ✓    |
+| `/deleted`       | GET    | -                                             | `{data: string[]}`                                        | ✓    |
+| `/deleted`       | POST   | `{data: string[], replace?: boolean}`         | `{success: true}`                                         | ✓    |
+| `/reset`         | POST   | -                                             | `{success: true}`                                         | ✓    |
+| `/categorize`    | POST   | `{title, description, url, categories}`       | `{title, description, categories}`                        | ✓    |
+| `/process-tweet` | POST   | `{tweet: {id, text, urls}, categories}`       | `{originalId, isAI, title, description, categories, ...}` | ✓    |
 
 **Auth Header Required:**
 ```
