@@ -56,7 +56,7 @@ export const processBookmarksWithClaude = async (
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-secret': '[REDACTED-API-SECRET]',
+            'x-api-secret': import.meta.env.VITE_STORAGE_SECRET ?? '',
           },
           body: JSON.stringify({
             tweet: { id: tweetId, text: sanitized, urls },

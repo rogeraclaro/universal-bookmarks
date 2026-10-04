@@ -1,10 +1,17 @@
+/// <reference types="vite/client" />
+
+// Injected at build time from extension/.env.local or mobile/.env.local (gitignored).
+// Never hardcode it: anything committed here ends up in git history.
+const API_SECRET = import.meta.env.VITE_API_SECRET ?? ''
+if (!API_SECRET) console.warn('VITE_API_SECRET is not set: API calls will be rejected')
+
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: 'https://links.masellas.info/api',
-  SECRET: '[REDACTED-API-SECRET]',
+  SECRET: API_SECRET,
   HEADERS: {
     'Content-Type': 'application/json',
-    'x-api-secret': '[REDACTED-API-SECRET]'
+    'x-api-secret': API_SECRET
   }
 };
 
