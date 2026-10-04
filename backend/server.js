@@ -9,7 +9,12 @@ const PORT = 3003;
 const DB_FILE = path.join(__dirname, 'db.json');
 
 // --- CONFIGURACIÓ ---
-const API_SECRET = process.env.API_SECRET || '[REDACTED-API-SECRET]';
+const API_SECRET = process.env.API_SECRET;
+if (!API_SECRET) {
+    // Without it the auth check below would compare undefined === undefined and let everything through.
+    console.error('API_SECRET not set: refusing to start');
+    process.exit(1);
+}
 
 // Middleware
 app.use(cors());
@@ -85,14 +90,14 @@ app.post('/reset', (req, res) => {
     res.json({ success: true });
 });
 
-// --- GROQ HELPER ---
+// --- LLM HELPER (DeepSeek, OpenAI-compatible) ---
 
-function callGroq(messages, timeoutMs = 30000) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error('GROQ_API_KEY not set');
+function callLLM(messages, timeoutMs = 30000) {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) throw new Error('DEEPSEEK_API_KEY not set');
 
     const body = JSON.stringify({
-        model: 'openai/gpt-oss-20b',
+        model: 'deepseek-flash',
         messages,
         response_format: { type: 'json_object' },
         temperature: 0.2,
@@ -100,8 +105,8 @@ function callGroq(messages, timeoutMs = 30000) {
 
     return new Promise((resolve, reject) => {
         const options = {
-            hostname: 'api.groq.com',
-            path: '/openai/v1/chat/completions',
+            hostname: 'api.deepseek.com',
+            path: '/chat/completions',
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,7 +122,7 @@ function callGroq(messages, timeoutMs = 30000) {
         });
 
         req.on('error', reject);
-        req.setTimeout(timeoutMs, () => { req.destroy(new Error('Groq timeout')); });
+        req.setTimeout(timeoutMs, () => { req.destroy(new Error('LLM timeout')); });
         req.write(body);
         req.end();
     });
@@ -226,8 +231,8 @@ app.post('/categorize', async (req, res) => {
     const originalUrl = url;
     console.log('[categorize] url:', url, '| title:', title, '| desc:', (description || '').slice(0, 80));
 
-    if (!process.env.GROQ_API_KEY) {
-        console.error('[categorize] GROQ_API_KEY not set');
+    if (!process.env.DEEPSEEK_API_KEY) {
+        console.error('[categorize] DEEPSEEK_API_KEY not set');
         return res.json({ categories: [], title: '', description: '', error: true });
     }
 
@@ -275,17 +280,17 @@ URL: ${url}
 Títol original: ${title || ''}`;
 
     try {
-        const groqRes = await callGroq([
+        const llmRes = await callLLM([
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
         ]);
 
-        if (groqRes.status !== 200) {
-            console.error('[categorize] Groq error:', groqRes.status, groqRes.body.slice(0, 200));
+        if (llmRes.status !== 200) {
+            console.error('[categorize] LLM error:', llmRes.status, llmRes.body.slice(0, 200));
             return res.json({ categories: [], title: '', description: '', error: true });
         }
 
-        const data = JSON.parse(groqRes.body);
+        const data = JSON.parse(llmRes.body);
         const parsed = JSON.parse(data.choices[0].message.content);
 
         res.json({
@@ -307,8 +312,8 @@ app.post('/process-tweet', async (req, res) => {
     const sanitized = sanitizeText(tweet.text || '');
     const categoriesStr = (categories || []).join(', ');
 
-    if (!process.env.GROQ_API_KEY) {
-        console.error('[process-tweet] GROQ_API_KEY not set');
+    if (!process.env.DEEPSEEK_API_KEY) {
+        console.error('[process-tweet] DEEPSEEK_API_KEY not set');
         return res.json({
             originalId: tweet.id,
             isAI: false,
@@ -331,16 +336,16 @@ Text del tweet: ${sanitized}
 URLs: ${(tweet.urls || []).join(', ')}`;
 
     try {
-        const groqRes = await callGroq([
+        const llmRes = await callLLM([
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
         ]);
 
-        if (groqRes.status !== 200) {
-            throw new Error(`Groq HTTP ${groqRes.status}`);
+        if (llmRes.status !== 200) {
+            throw new Error(`LLM HTTP ${llmRes.status}`);
         }
 
-        const data = JSON.parse(groqRes.body);
+        const data = JSON.parse(llmRes.body);
         const parsed = JSON.parse(data.choices[0].message.content);
 
         res.json({
