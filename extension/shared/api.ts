@@ -45,17 +45,11 @@ export async function getCategories(): Promise<string[]> {
   }
 }
 
-// POST new bookmark (appends to existing bookmarks)
+// POST new bookmark. Server-side idempotent by originalLink: a duplicate
+// response (200, duplicate:true) means it is already saved, so it counts as success.
 export async function saveBookmark(bookmark: Bookmark): Promise<void> {
   try {
-    // First, get all existing bookmarks
-    const existingBookmarks = await getBookmarks();
-
-    // Add new bookmark to the array
-    const allBookmarks = [...existingBookmarks, bookmark];
-
-    // POST the complete array (backend replaces entire file)
-    await apiRequest<APISaveResponse>('bookmarks', 'POST', { data: allBookmarks });
+    await apiRequest<APISaveResponse>('bookmarks/add', 'POST', { bookmark });
   } catch (error) {
     console.error('Error saving bookmark:', error);
     throw error;

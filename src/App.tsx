@@ -344,12 +344,14 @@ export default function App() {
 				})
 
 				setBookmarks(migratedBookmarks)
+				// Adopt the server list only now that it is in state (see storage.markLoaded)
+				storage.markLoaded(loadedBookmarks)
 				setCategories(loadedCategories)
 				setDeletedIds(loadedDeletedIds)
 
 				// Save migrated data if changes were made
 				if (migratedBookmarks.some((b: any, i: number) => b !== loadedBookmarks[i])) {
-					storage.saveBookmarks(migratedBookmarks)
+					storage.saveBookmarks(migratedBookmarks).catch(() => {})
 				}
 
 				// Check for search query in URL
@@ -370,8 +372,10 @@ export default function App() {
 
 	// Save Data when changed
 	useEffect(() => {
-		if (bookmarks.length > 0) storage.saveBookmarks(bookmarks)
-	}, [bookmarks])
+		// Never sync before the initial load finished; empty arrays must persist (delete-last case)
+		if (isDataLoading) return
+		storage.saveBookmarks(bookmarks).catch(() => {})
+	}, [bookmarks, isDataLoading])
 
 	useEffect(() => {
 		if (categories.length > 0) storage.saveCategories(categories)
@@ -545,7 +549,7 @@ export default function App() {
 
 			const updatedBookmarks = [...bookmarks, ...newItems]
 			setBookmarks(updatedBookmarks)
-			storage.saveBookmarks(updatedBookmarks)
+			storage.saveBookmarks(updatedBookmarks).catch(() => {})
 
 			addLog(strings.logs.finished, 'success')
 			setIsLoading(false)
@@ -611,7 +615,7 @@ export default function App() {
 
 					const newBookmarks = Array.from(bookmarkMap.values())
 					setBookmarks(newBookmarks)
-					storage.saveBookmarks(newBookmarks)
+					storage.saveBookmarks(newBookmarks).catch(() => {})
 
 					const msg = strings.alerts.backupMerge
 						.replace('{0}', String(addedCount))
@@ -830,7 +834,7 @@ export default function App() {
 		// Add all edited tweets to bookmarks
 		const updatedBookmarks = [...bookmarks, ...editedTweetsInCarousel]
 		setBookmarks(updatedBookmarks)
-		storage.saveBookmarks(updatedBookmarks)
+		storage.saveBookmarks(updatedBookmarks).catch(() => {})
 
 		// Remove edited tweets from rejectedTweets
 		const editedIds = new Set(editedTweetsInCarousel.map((b) => b.originalLink.split('/').pop()))
